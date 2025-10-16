@@ -259,15 +259,15 @@ export const fulfillOrderSchema = z.object({
 });
 
 export const orderFilterSchema = z.object({
-  page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(20),
-  paymentStatus: z.enum(["pending", "processing", "completed", "failed", "refunded", "disputed"]).optional(),
-  fulfillmentStatus: z.enum(["pending", "fulfilled", "failed"]).optional(),
-  customerEmail: z.string().email().optional(),
-  brand: z.string().max(100).optional(),
-  search: z.string().max(100).optional(),
-  startDate: z.string().datetime().optional(),
-  endDate: z.string().datetime().optional(),
+  page: z.coerce.number().int().positive().default(1).catch(1),
+  limit: z.coerce.number().int().positive().max(100).default(20).catch(20),
+  paymentStatus: z.enum(["pending", "processing", "completed", "failed", "refunded", "disputed"]).nullish(),
+  fulfillmentStatus: z.enum(["pending", "fulfilled", "failed"]).nullish(),
+  customerEmail: z.string().email().nullish(),
+  brand: z.string().max(100).nullish(),
+  search: z.string().max(100).nullish(),
+  startDate: z.string().datetime().nullish(),
+  endDate: z.string().datetime().nullish(),
 });
 
 // ============================================================================

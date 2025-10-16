@@ -4,25 +4,20 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CreditCard, CheckCircle, XCircle, AlertCircle } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { Loader2, CreditCard, CheckCircle, XCircle, AlertCircle, Trash2 } from "lucide-react";
+import { PaymentConfigDialog } from "@/components/payment-config-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
-const paymentProviderSchema = z.object({
-  publicKey: z.string().optional(),
-  secretKey: z.string().optional(),
-  webhookSecret: z.string().optional(),
-  accountId: z.string().optional(),
-  testMode: z.boolean(),
-  enabled: z.boolean(),
-});
-
-type PaymentProviderFormData = z.infer<typeof paymentProviderSchema>;
 
 interface Company {
   id: string;
@@ -49,18 +44,13 @@ export default function PaymentSettingsPage() {
   const [company, setCompany] = useState<Company | null>(null);
   const [providers, setProviders] = useState<PaymentProvider[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<ProviderType | null>(null);
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<PaymentProviderFormData>({
-    resolver: zodResolver(paymentProviderSchema),
-  });
+  const [selectedProviderConfig, setSelectedProviderConfig] = useState<PaymentProvider | null>(null);
+  const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [providerToDelete, setProviderToDelete] = useState<PaymentProvider | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchCompanyAndProviders();
@@ -95,39 +85,54 @@ export default function PaymentSettingsPage() {
     }
   };
 
-  const onSubmit = async (data: PaymentProviderFormData) => {
-    if (!company || !selectedProvider) return;
+  const handleConfigureClick = (provider: ProviderType) => {
+    const config = providers.find((p) => p.provider === provider);
+    setSelectedProvider(provider);
+    setSelectedProviderConfig(config || null);
+    setIsConfigDialogOpen(true);
+  };
 
-    setIsSaving(selectedProvider);
-    setMessage(null);
+  const handleConfigSuccess = () => {
+    setMessage({ type: "success", text: "Payment provider configured successfully!" });
+    fetchCompanyAndProviders();
+    setSelectedProvider(null);
+    setSelectedProviderConfig(null);
+  };
 
+  const handleDeleteClick = (config: PaymentProvider) => {
+    setProviderToDelete(config);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!company || !providerToDelete) return;
+
+    setIsDeleting(true);
     try {
-      const response = await fetch(`/api/v1/companies/${company.id}/payments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          provider: selectedProvider,
-          ...data,
-        }),
-      });
+      const response = await fetch(
+        `/api/v1/companies/${company.id}/payments/${providerToDelete.id}`,
+        {
+          method: "DELETE",
+        }
+      );
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error?.message || "Failed to save payment provider");
+      if (response.ok) {
+        setMessage({ type: "success", text: "Payment provider deleted successfully!" });
+        fetchCompanyAndProviders();
+      } else {
+        const result = await response.json();
+        setMessage({
+          type: "error",
+          text: result.error?.message || "Failed to delete payment provider",
+        });
       }
-
-      setMessage({ type: "success", text: "Payment provider configured successfully!" });
-      fetchCompanyAndProviders();
-      setSelectedProvider(null);
-      reset();
     } catch (error) {
-      setMessage({
-        type: "error",
-        text: error instanceof Error ? error.message : "Failed to save payment provider",
-      });
+      console.error("Delete error:", error);
+      setMessage({ type: "error", text: "Failed to delete payment provider" });
     } finally {
-      setIsSaving(null);
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setProviderToDelete(null);
     }
   };
 
@@ -175,7 +180,7 @@ export default function PaymentSettingsPage() {
     pgpay: {
       name: "PGPay",
       description: "Regional payment gateway",
-      fields: ["publicKey", "secretKey", "accountId"],
+      fields: ["userId"],
     },
   };
 
@@ -267,176 +272,39 @@ export default function PaymentSettingsPage() {
                   </div>
                 )}
 
-                <Button
-                  variant={selectedProvider === provider ? "secondary" : "default"}
-                  className="w-full"
-                  onClick={() =>
-                    setSelectedProvider(selectedProvider === provider ? null : provider)
-                  }
-                >
-                  {selectedProvider === provider ? "Cancel" : "Configure"}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="default"
+                    onClick={() => handleConfigureClick(provider)}
+                  >
+                    {config ? "Edit" : "Configure"}
+                  </Button>
+                  {config && (
+                    <Button
+                      variant="destructive"
+                      onClick={() => handleDeleteClick(config)}
+                      size="icon"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
           );
         })}
       </div>
 
-      {/* Configuration Form */}
-      {selectedProvider && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Configure {providerDetails[selectedProvider].name}</CardTitle>
-            <CardDescription>
-              Enter your {providerDetails[selectedProvider].name} credentials
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              {/* Public Key / Client ID */}
-              {providerDetails[selectedProvider].fields.includes("publicKey") && (
-                <div className="space-y-2">
-                  <Label htmlFor="publicKey">
-                    {selectedProvider === "stripe" ? "Publishable Key" : "Client ID"}
-                  </Label>
-                  <Input
-                    id="publicKey"
-                    {...register("publicKey")}
-                    placeholder={
-                      selectedProvider === "stripe"
-                        ? "pk_test_..."
-                        : selectedProvider === "paypal"
-                          ? "AYSq3..."
-                          : "Your client ID"
-                    }
-                  />
-                  {errors.publicKey && (
-                    <p className="text-sm text-destructive">{errors.publicKey.message}</p>
-                  )}
-                </div>
-              )}
-
-              {/* Secret Key */}
-              {providerDetails[selectedProvider].fields.includes("secretKey") && (
-                <div className="space-y-2">
-                  <Label htmlFor="secretKey">
-                    {selectedProvider === "stripe" ? "Secret Key" : "Client Secret"}
-                  </Label>
-                  <Input
-                    id="secretKey"
-                    type="password"
-                    {...register("secretKey")}
-                    placeholder={
-                      selectedProvider === "stripe"
-                        ? "sk_test_..."
-                        : selectedProvider === "paypal"
-                          ? "EHk9..."
-                          : "Your client secret"
-                    }
-                  />
-                  {errors.secretKey && (
-                    <p className="text-sm text-destructive">{errors.secretKey.message}</p>
-                  )}
-                </div>
-              )}
-
-              {/* Webhook Secret */}
-              {providerDetails[selectedProvider].fields.includes("webhookSecret") && (
-                <div className="space-y-2">
-                  <Label htmlFor="webhookSecret">Webhook Secret (Optional)</Label>
-                  <Input
-                    id="webhookSecret"
-                    type="password"
-                    {...register("webhookSecret")}
-                    placeholder="whsec_..."
-                  />
-                  {errors.webhookSecret && (
-                    <p className="text-sm text-destructive">{errors.webhookSecret.message}</p>
-                  )}
-                </div>
-              )}
-
-              {/* Account ID */}
-              {providerDetails[selectedProvider].fields.includes("accountId") && (
-                <div className="space-y-2">
-                  <Label htmlFor="accountId">Merchant/Account ID (Optional)</Label>
-                  <Input
-                    id="accountId"
-                    {...register("accountId")}
-                    placeholder="Your merchant ID"
-                  />
-                  {errors.accountId && (
-                    <p className="text-sm text-destructive">{errors.accountId.message}</p>
-                  )}
-                </div>
-              )}
-
-              {/* Wallet Address (for crypto) */}
-              {providerDetails[selectedProvider].fields.includes("walletAddress") && (
-                <div className="space-y-2">
-                  <Label htmlFor="walletAddress">Wallet Address</Label>
-                  <Input
-                    id="walletAddress"
-                    {...register("accountId")} // Reuse accountId field
-                    placeholder="0x..."
-                  />
-                  {errors.accountId && (
-                    <p className="text-sm text-destructive">{errors.accountId.message}</p>
-                  )}
-                </div>
-              )}
-
-              {/* Test Mode Toggle */}
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="testMode">Test Mode</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Use test credentials (recommended for development)
-                  </p>
-                </div>
-                <Switch id="testMode" {...register("testMode")} defaultChecked />
-              </div>
-
-              {/* Enabled Toggle */}
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="enabled">Enable Provider</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Allow customers to use this payment method
-                  </p>
-                </div>
-                <Switch id="enabled" {...register("enabled")} />
-              </div>
-
-              <div className="flex gap-2">
-                <Button
-                  type="submit"
-                  disabled={isSaving === selectedProvider}
-                  className="flex-1"
-                >
-                  {isSaving === selectedProvider ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Configuration"
-                  )}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setSelectedProvider(null);
-                    reset();
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+      {/* Payment Configuration Dialog */}
+      {company && (
+        <PaymentConfigDialog
+          open={isConfigDialogOpen}
+          onOpenChange={setIsConfigDialogOpen}
+          provider={selectedProvider}
+          companyId={company.id}
+          existingConfig={selectedProviderConfig}
+          onSuccess={handleConfigSuccess}
+        />
       )}
 
       {/* Information Card */}
@@ -464,6 +332,37 @@ export default function PaymentSettingsPage() {
           </ul>
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Payment Configuration</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this payment provider configuration? This action
+              cannot be undone. Customers will no longer be able to pay using{" "}
+              {providerToDelete?.provider}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

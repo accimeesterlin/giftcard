@@ -5,6 +5,10 @@ import { useParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { CartProvider, useCart } from "@/contexts/CartContext";
+import { CartSheet } from "@/components/cart-sheet";
 import {
   ShoppingCart,
   Package,
@@ -14,6 +18,8 @@ import {
   Loader2,
   CheckCircle,
   Info,
+  CreditCard,
+  Plus,
 } from "lucide-react";
 
 interface Listing {
@@ -51,10 +57,18 @@ interface DenominationAvailability {
   inStock: boolean;
 }
 
-export default function MarketplaceListingPage() {
+interface PaymentProvider {
+  id: string;
+  provider: string;
+  enabled: boolean;
+  status: string;
+}
+
+function MarketplaceListingContent() {
   const params = useParams();
   const companySlug = params.companySlug as string;
   const listingId = params.listingId as string;
+  const { addItem } = useCart();
 
   const [company, setCompany] = useState<Company | null>(null);
   const [listing, setListing] = useState<Listing | null>(null);
@@ -62,6 +76,12 @@ export default function MarketplaceListingPage() {
   const [selectedDenomination, setSelectedDenomination] = useState<number | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [inventory, setInventory] = useState<DenominationAvailability[]>([]);
+  const [paymentProviders, setPaymentProviders] = useState<PaymentProvider[]>([]);
+  const [selectedPaymentProvider, setSelectedPaymentProvider] = useState<string | null>(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [customerFirstName, setCustomerFirstName] = useState("");
+  const [customerLastName, setCustomerLastName] = useState("");
 
   useEffect(() => {
     fetchData();
@@ -104,6 +124,27 @@ export default function MarketplaceListingPage() {
               }
             }
           }
+
+          // Get payment providers (public endpoint)
+          console.log("[Marketplace Page] Fetching payment providers for:", companySlug);
+          const providersResponse = await fetch(
+            `/api/v1/marketplace/${companySlug}/payments`
+          );
+          console.log("[Marketplace Page] Providers response status:", providersResponse.status);
+
+          if (providersResponse.ok) {
+            const providersData = await providersResponse.json();
+            console.log("[Marketplace Page] Providers data:", providersData);
+            setPaymentProviders(providersData.data);
+
+            // Auto-select first available payment provider
+            if (providersData.data.length > 0) {
+              setSelectedPaymentProvider(providersData.data[0].provider);
+            }
+          } else {
+            const errorData = await providersResponse.json();
+            console.error("[Marketplace Page] Failed to fetch providers:", errorData);
+          }
         }
       }
     } catch (error) {
@@ -135,6 +176,83 @@ export default function MarketplaceListingPage() {
     const discount = basePrice * (listing.discountPercentage / 100);
     const priceAfterDiscount = basePrice - discount;
     return priceAfterDiscount * (listing.sellerFeePercentage / 100);
+  };
+
+  const handleAddToCart = () => {
+    if (!listing || !selectedDenomination) return;
+
+    const availability = inventory.find((inv) => inv.denomination === selectedDenomination);
+    if (!availability?.inStock) {
+      alert("This denomination is currently out of stock");
+      return;
+    }
+
+    addItem({
+      listingId: listing.id,
+      companySlug,
+      title: listing.title,
+      brand: listing.brand,
+      denomination: selectedDenomination,
+      quantity,
+      currency: listing.currency,
+      discountPercentage: listing.discountPercentage,
+      sellerFeePercentage: listing.sellerFeePercentage,
+      imageUrl: listing.imageUrl,
+    });
+
+    alert("Added to cart!");
+  };
+
+  const handleBuyNow = async () => {
+    if (!selectedDenomination || !selectedPaymentProvider) return;
+
+    // Validate customer information
+    if (!customerEmail || !customerFirstName || !customerLastName) {
+      alert("Please provide your email and name to receive your gift card");
+      return;
+    }
+
+    setIsProcessingPayment(true);
+
+    try {
+      const response = await fetch(
+        `/api/v1/marketplace/${companySlug}/payments/create`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            provider: selectedPaymentProvider,
+            amount: calculatePrice(),
+            currency: listing?.currency || "USD",
+            listingId,
+            denomination: selectedDenomination,
+            quantity,
+            customerEmail,
+            customerFirstName,
+            customerLastName,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error?.message || "Failed to create payment");
+      }
+
+      const result = await response.json();
+
+      // Redirect to payment page
+      if (result.data.redirectUrl) {
+        window.location.href = result.data.redirectUrl;
+      }
+    } catch (error) {
+      console.error("Payment error:", error);
+      alert(error instanceof Error ? error.message : "Failed to process payment");
+    } finally {
+      setIsProcessingPayment(false);
+    }
   };
 
   if (isLoading) {
@@ -176,14 +294,17 @@ export default function MarketplaceListingPage() {
       {/* Header */}
       <div className="border-b">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            {company.logo && (
-              <img src={company.logo} alt={company.displayName} className="h-10 w-10 rounded" />
-            )}
-            <div>
-              <h2 className="font-semibold">{company.displayName}</h2>
-              <p className="text-sm text-muted-foreground">Gift Card Marketplace</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {company.logo && (
+                <img src={company.logo} alt={company.displayName} className="h-10 w-10 rounded" />
+              )}
+              <div>
+                <h2 className="font-semibold">{company.displayName}</h2>
+                <p className="text-sm text-muted-foreground">Gift Card Marketplace</p>
+              </div>
             </div>
+            <CartSheet />
           </div>
         </div>
       </div>
@@ -396,27 +517,131 @@ export default function MarketplaceListingPage() {
                   </div>
                 </div>
 
-                {/* Purchase Button */}
+                {/* Customer Information */}
+                <div className="border-t pt-4">
+                  <h3 className="text-sm font-medium mb-3">Customer Information</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="customerEmail" className="text-xs">
+                        Email Address <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="customerEmail"
+                        type="email"
+                        placeholder="your@email.com"
+                        value={customerEmail}
+                        onChange={(e) => setCustomerEmail(e.target.value)}
+                        required
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        We'll send your gift card to this email
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label htmlFor="customerFirstName" className="text-xs">
+                          First Name <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          id="customerFirstName"
+                          type="text"
+                          placeholder="John"
+                          value={customerFirstName}
+                          onChange={(e) => setCustomerFirstName(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="customerLastName" className="text-xs">
+                          Last Name <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          id="customerLastName"
+                          type="text"
+                          placeholder="Doe"
+                          value={customerLastName}
+                          onChange={(e) => setCustomerLastName(e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Method Selection */}
+                {paymentProviders.length > 0 && (
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">
+                      Payment Method
+                    </label>
+                    <div className="grid grid-cols-1 gap-2">
+                      {paymentProviders.map((provider) => (
+                        <Button
+                          key={provider.id}
+                          variant={selectedPaymentProvider === provider.provider ? "default" : "outline"}
+                          onClick={() => setSelectedPaymentProvider(provider.provider)}
+                          className="h-auto py-3 justify-start"
+                        >
+                          <CreditCard className="mr-2 h-4 w-4" />
+                          <span className="capitalize">{provider.provider}</span>
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Purchase Buttons */}
                 {(() => {
                   const availability = inventory.find((inv) => inv.denomination === selectedDenomination);
                   const inStock = availability?.inStock ?? false;
+                  const canAddToCart = selectedDenomination && inStock;
+                  const canPurchase = selectedDenomination && inStock && selectedPaymentProvider && customerEmail && customerFirstName && customerLastName;
 
                   return (
                     <>
-                      <Button
-                        size="lg"
-                        className="w-full"
-                        disabled={!selectedDenomination || !inStock}
-                      >
-                        <ShoppingCart className="mr-2 h-5 w-5" />
-                        Buy Now
-                      </Button>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          size="lg"
+                          variant="outline"
+                          disabled={!canAddToCart}
+                          onClick={handleAddToCart}
+                        >
+                          <Plus className="mr-2 h-5 w-5" />
+                          Add to Cart
+                        </Button>
+                        <Button
+                          size="lg"
+                          disabled={!canPurchase || isProcessingPayment}
+                          onClick={handleBuyNow}
+                        >
+                          {isProcessingPayment ? (
+                            <>
+                              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                              Processing...
+                            </>
+                          ) : (
+                            <>
+                              <ShoppingCart className="mr-2 h-5 w-5" />
+                              Buy Now
+                            </>
+                          )}
+                        </Button>
+                      </div>
 
                       {selectedDenomination && !inStock && (
                         <div className="flex items-start gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                           <Info className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
                           <div className="text-sm text-yellow-900 dark:text-yellow-300">
                             This denomination is currently out of stock. Please select another denomination or check back later.
+                          </div>
+                        </div>
+                      )}
+
+                      {paymentProviders.length === 0 && (
+                        <div className="flex items-start gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                          <Info className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                          <div className="text-sm text-yellow-900 dark:text-yellow-300">
+                            No payment methods are currently available. Please contact the seller.
                           </div>
                         </div>
                       )}
@@ -445,5 +670,13 @@ export default function MarketplaceListingPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function MarketplaceListingPage() {
+  return (
+    <CartProvider>
+      <MarketplaceListingContent />
+    </CartProvider>
   );
 }

@@ -66,6 +66,11 @@ const PaymentProviderConfigSchema = new Schema<PaymentProviderConfigDocument>(
       type: String,
       default: null,
     },
+    userId: {
+      type: String,
+      default: null,
+      // For PGPay: receiver of funds
+    },
     // Configuration
     testMode: {
       type: Boolean,

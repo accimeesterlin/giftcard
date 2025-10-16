@@ -103,6 +103,18 @@ interface InventorySummary {
   total: number;
 }
 
+interface RecentOrder {
+  id: string;
+  customerEmail: string;
+  customerName: string | null;
+  denomination: number;
+  quantity: number;
+  total: number;
+  currency: string;
+  paidAt: string;
+  createdAt: string;
+}
+
 export default function ListingDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -114,6 +126,7 @@ export default function ListingDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [inventorySummary, setInventorySummary] = useState<InventorySummary[]>([]);
+  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   // Dialog states
@@ -146,8 +159,9 @@ export default function ListingDetailPage() {
             const listingData = await listingResponse.json();
             setListing(listingData.data);
 
-            // Fetch inventory summary
+            // Fetch inventory summary and recent orders
             fetchInventorySummary(foundCompany.id, listingId);
+            fetchRecentOrders(foundCompany.id, listingId);
           } else {
             setMessage({ type: "error", text: "Listing not found" });
           }
@@ -172,6 +186,20 @@ export default function ListingDetailPage() {
       }
     } catch (error) {
       console.error("Failed to fetch inventory summary:", error);
+    }
+  };
+
+  const fetchRecentOrders = async (companyId: string, listingId: string) => {
+    try {
+      const response = await fetch(
+        `/api/v1/companies/${companyId}/listings/${listingId}/orders?limit=5`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setRecentOrders(data.data || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch recent orders:", error);
     }
   };
 
@@ -697,45 +725,46 @@ export default function ListingDetailPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <UserCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p className="font-medium mb-1">No purchases yet</p>
-            <p className="text-sm">Customers will appear here once they purchase from this listing</p>
-          </div>
-          {/* TODO: Implement actual customer list
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Customer</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Denomination</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Date</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {recentCustomers.map((customer) => (
-                <TableRow key={customer.id}>
-                  <TableCell>{customer.name || "Anonymous"}</TableCell>
-                  <TableCell>{customer.email}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">
-                      {listing.currency} {customer.denomination}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{customer.quantity}</TableCell>
-                  <TableCell className="font-medium">
-                    {listing.currency} {customer.amount.toFixed(2)}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {format(new Date(customer.purchasedAt), "MMM d, yyyy")}
-                  </TableCell>
+          {recentOrders.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <UserCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p className="font-medium mb-1">No purchases yet</p>
+              <p className="text-sm">Customers will appear here once they purchase from this listing</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Denomination</TableHead>
+                  <TableHead>Quantity</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Date</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          */}
+              </TableHeader>
+              <TableBody>
+                {recentOrders.map((order) => (
+                  <TableRow key={order.id}>
+                    <TableCell>{order.customerName || "Anonymous"}</TableCell>
+                    <TableCell>{order.customerEmail}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">
+                        {order.currency} {order.denomination}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{order.quantity}</TableCell>
+                    <TableCell className="font-medium">
+                      {order.currency} {order.total.toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {format(new Date(order.paidAt || order.createdAt), "MMM d, yyyy")}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 

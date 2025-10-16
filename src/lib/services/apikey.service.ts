@@ -177,6 +177,49 @@ export class ApiKeyService {
   }
 
   /**
+   * Delete an API key (only revoked keys can be deleted)
+   */
+  static async deleteApiKey(companyId: string, apiKeyId: string, userId: string) {
+    await connectDB();
+
+    // Verify user has admin+ permissions
+    const membership = await CompanyMembership.findByUserAndCompany(userId, companyId);
+    if (!membership || !membership.hasMinimumRole("admin")) {
+      throw Errors.insufficientPermissions("admin", companyId);
+    }
+
+    // Find the API key
+    const apiKeyRecord = await ApiKey.findOne({ id: apiKeyId, companyId });
+    if (!apiKeyRecord) {
+      throw Errors.notFound("API key");
+    }
+
+    // Only allow deletion of revoked keys
+    if (apiKeyRecord.status !== "revoked") {
+      throw Errors.badRequest("Only revoked API keys can be deleted. Please revoke the key first.");
+    }
+
+    // Create audit log before deletion
+    await AuditLog.createLog({
+      companyId,
+      userId,
+      action: "apikey.deleted",
+      resourceType: "apikey",
+      resourceId: apiKeyRecord.id,
+      metadata: {
+        name: apiKeyRecord.name,
+        keyPrefix: apiKeyRecord.keyPrefix,
+        deletedAt: new Date(),
+      },
+    });
+
+    // Delete the key
+    await ApiKey.deleteOne({ id: apiKeyId, companyId });
+
+    return { success: true, message: "API key deleted successfully" };
+  }
+
+  /**
    * List API keys for a company
    */
   static async listApiKeys(companyId: string, userId: string) {
@@ -255,6 +298,10 @@ export class ApiKeyService {
       // Listings
       { scope: "listings:read", description: "Read listings" },
       { scope: "listings:write", description: "Create and update listings" },
+
+      // Customers
+      { scope: "customers:read", description: "Read customers" },
+      { scope: "customers:write", description: "Create and update customers" },
 
       // Webhooks
       { scope: "webhooks:read", description: "Read webhook configurations" },

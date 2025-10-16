@@ -91,6 +91,8 @@ export default function ApiKeysPage() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [isRevokeDialogOpen, setIsRevokeDialogOpen] = useState(false);
   const [keyToRevoke, setKeyToRevoke] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [keyToDelete, setKeyToDelete] = useState<string | null>(null);
 
   const {
     register,
@@ -153,6 +155,8 @@ export default function ApiKeysPage() {
       { scope: "inventory:write", description: "Add inventory" },
       { scope: "listings:read", description: "Read listings" },
       { scope: "listings:write", description: "Create and update listings" },
+      { scope: "customers:read", description: "Read customers" },
+      { scope: "customers:write", description: "Create and update customers" },
       { scope: "webhooks:read", description: "Read webhook configurations" },
       { scope: "webhooks:write", description: "Manage webhooks" },
       { scope: "*", description: "Full API access (use with caution)" },
@@ -225,6 +229,40 @@ export default function ApiKeysPage() {
     }
   };
 
+  const openDeleteDialog = (keyId: string) => {
+    setKeyToDelete(keyId);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteKey = async () => {
+    if (!company || !keyToDelete) return;
+
+    try {
+      const response = await fetch(
+        `/api/v1/companies/${company.id}/api-keys/${keyToDelete}?action=delete`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error?.message || "Failed to delete API key");
+      }
+
+      setMessage({ type: "success", text: "API key deleted successfully" });
+      fetchData();
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text: error instanceof Error ? error.message : "Failed to delete API key",
+      });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setKeyToDelete(null);
+    }
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setMessage({ type: "success", text: "Copied to clipboard!" });
@@ -240,6 +278,14 @@ export default function ApiKeysPage() {
     } else {
       setValue("scopes", [...current, scope]);
     }
+  };
+
+  const selectAllScopes = () => {
+    setValue("scopes", availableScopes.map((s) => s.scope));
+  };
+
+  const deselectAllScopes = () => {
+    setValue("scopes", []);
   };
 
   const getStatusBadge = (status: string) => {
@@ -372,6 +418,17 @@ export default function ApiKeysPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => openRevokeDialog(key.id)}
+                          title="Revoke API key"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
+                      {key.status === "revoked" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openDeleteDialog(key.id)}
+                          title="Delete API key permanently"
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -437,7 +494,27 @@ export default function ApiKeysPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Scopes * (Select at least one)</Label>
+              <div className="flex items-center justify-between">
+                <Label>Scopes * (Select at least one)</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={selectAllScopes}
+                  >
+                    Select All
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={deselectAllScopes}
+                  >
+                    Deselect All
+                  </Button>
+                </div>
+              </div>
               {errors.scopes && <p className="text-sm text-destructive">{errors.scopes.message}</p>}
               <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto border rounded-md p-3">
                 {availableScopes.map((scope) => (
@@ -528,7 +605,7 @@ export default function ApiKeysPage() {
             <AlertDialogTitle>Revoke API Key</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to revoke this API key? This action cannot be undone and will
-              immediately invalidate the key.
+              immediately invalidate the key. You can delete it permanently after revoking.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -538,6 +615,28 @@ export default function ApiKeysPage() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Revoke Key
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete API Key</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete this API key? This action cannot be
+              undone and will remove the key from all records.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteKey}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Permanently
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

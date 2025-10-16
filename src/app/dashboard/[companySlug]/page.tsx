@@ -25,10 +25,10 @@ interface Company {
 
 interface Order {
   id: string;
-  buyerEmail: string;
-  totalAmount: number;
+  customerEmail: string;
+  total: number;
   currency: string;
-  status: string;
+  paymentStatus: string;
   createdAt: string;
 }
 
@@ -84,8 +84,8 @@ export default function DashboardOverview() {
   };
 
   const totalRevenue = orders
-    .filter((o) => o.status === "paid" || o.status === "fulfilled")
-    .reduce((sum, order) => sum + order.totalAmount, 0);
+    .filter((o) => o.paymentStatus === "completed")
+    .reduce((sum, order) => sum + order.total, 0);
 
   const totalOrders = orders.length;
   const totalInventory = listings.reduce((sum, listing) => sum + listing.totalStock, 0);
@@ -94,10 +94,11 @@ export default function DashboardOverview() {
   const getStatusBadge = (status: string) => {
     const variants: Record<string, any> = {
       pending: "outline",
-      paid: "default",
-      fulfilled: "default",
+      processing: "outline",
+      completed: "default",
       failed: "destructive",
       refunded: "secondary",
+      disputed: "destructive",
     };
 
     return (
@@ -214,16 +215,16 @@ export default function DashboardOverview() {
                 {orders.map((order) => (
                   <div key={order.id} className="flex items-center justify-between border-b pb-4 last:border-0">
                     <div className="flex-1">
-                      <p className="text-sm font-medium">{order.buyerEmail}</p>
+                      <p className="text-sm font-medium">{order.customerEmail}</p>
                       <p className="text-xs text-muted-foreground">
                         {format(new Date(order.createdAt), "MMM d, yyyy 'at' h:mm a")}
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-medium">
-                        ${order.totalAmount.toFixed(2)}
+                        ${order.total.toFixed(2)}
                       </span>
-                      {getStatusBadge(order.status)}
+                      {getStatusBadge(order.paymentStatus)}
                     </div>
                   </div>
                 ))}

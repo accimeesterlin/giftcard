@@ -90,7 +90,7 @@ const CompanyMembershipSchema = new Schema<CompanyMembershipDocument>(
 CompanyMembershipSchema.index({ userId: 1, companyId: 1 }, { unique: true });
 CompanyMembershipSchema.index({ companyId: 1, role: 1 });
 CompanyMembershipSchema.index({ companyId: 1, status: 1 });
-CompanyMembershipSchema.index({ invitationToken: 1 });
+// invitationToken index is already defined in the schema with unique: true, sparse: true
 CompanyMembershipSchema.index({ status: 1, invitationExpiresAt: 1 });
 
 // Virtual populate user

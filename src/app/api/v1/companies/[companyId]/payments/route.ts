@@ -22,6 +22,7 @@ const configureProviderSchema = z.object({
   webhookSecret: z.string().optional(),
   accountId: z.string().optional(),
   walletAddress: z.string().optional(),
+  userId: z.string().optional(),
   testMode: z.boolean().default(true),
   enabled: z.boolean().default(false),
 });
@@ -111,11 +112,12 @@ export async function POST(
       if (input.webhookSecret) config.webhookSecret = input.webhookSecret;
       if (input.accountId) config.accountId = input.accountId;
       if (input.walletAddress) config.walletAddress = input.walletAddress;
+      if (input.userId) config.userId = input.userId;
       config.testMode = input.testMode;
       config.enabled = input.enabled;
 
       // Set status based on whether credentials are provided
-      if (input.publicKey || input.secretKey) {
+      if (input.publicKey || input.secretKey || input.userId) {
         config.status = "connected";
       }
 
@@ -126,12 +128,13 @@ export async function POST(
         id: `ppc_${nanoid(16)}`,
         companyId,
         provider: input.provider,
-        status: input.publicKey || input.secretKey ? "connected" : "disconnected",
+        status: input.publicKey || input.secretKey || input.userId ? "connected" : "disconnected",
         publicKey: input.publicKey || null,
         secretKey: input.secretKey || null,
         webhookSecret: input.webhookSecret || null,
         accountId: input.accountId || null,
         walletAddress: input.walletAddress || null,
+        userId: input.userId || null,
         testMode: input.testMode,
         enabled: input.enabled,
         createdBy: userId,
