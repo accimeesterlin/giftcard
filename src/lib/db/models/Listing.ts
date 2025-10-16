@@ -65,14 +65,12 @@ const ListingSchema = new Schema<ListingDocument>(
     denominations: {
       type: [Number],
       required: true,
-      validate: [
-        {
-          validator: function (v: number[]) {
-            return v && v.length > 0;
-          },
-          message: "At least one denomination is required",
+      validate: {
+        validator: function (v: number[]) {
+          return v && v.length > 0;
         },
-      ],
+        message: "At least one denomination is required",
+      },
     },
     discountPercentage: {
       type: Number,
@@ -90,14 +88,12 @@ const ListingSchema = new Schema<ListingDocument>(
     countries: {
       type: [String],
       required: true,
-      validate: [
-        {
-          validator: function (v: string[]) {
-            return v && v.length > 0;
-          },
-          message: "At least one country is required",
+      validate: {
+        validator: function (v: string[]) {
+          return v && v.length > 0;
         },
-      ],
+        message: "At least one country is required",
+      },
     },
     // Images
     imageUrl: {

@@ -236,6 +236,37 @@ export const listingFilterSchema = z.object({
 });
 
 // ============================================================================
+// Order Schemas
+// ============================================================================
+
+export const createOrderSchema = z.object({
+  listingId: z.string().min(1),
+  denomination: z.number().positive(),
+  quantity: z.coerce.number().int().positive().min(1).max(100), // Max 100 cards per order
+  customerEmail: z.string().email(),
+  customerName: z.string().min(1).max(100).optional(),
+  paymentMethod: z.enum(["stripe", "paypal", "crypto", "pgpay"]),
+  deliveryEmail: z.string().email().optional(), // If different from customerEmail
+});
+
+export const fulfillOrderSchema = z.object({
+  orderId: z.string().min(1),
+  notes: z.string().max(1000).optional(),
+});
+
+export const orderFilterSchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(20),
+  paymentStatus: z.enum(["pending", "processing", "completed", "failed", "refunded", "disputed"]).optional(),
+  fulfillmentStatus: z.enum(["pending", "fulfilled", "failed"]).optional(),
+  customerEmail: z.string().email().optional(),
+  brand: z.string().max(100).optional(),
+  search: z.string().max(100).optional(),
+  startDate: z.string().datetime().optional(),
+  endDate: z.string().datetime().optional(),
+});
+
+// ============================================================================
 // Pagination & Filtering Schemas
 // ============================================================================
 
@@ -290,3 +321,6 @@ export type CreateListingInput = z.infer<typeof createListingSchema>;
 export type UpdateListingInput = z.infer<typeof updateListingSchema>;
 export type BulkUploadCodesInput = z.infer<typeof bulkUploadCodesSchema>;
 export type ListingFilterInput = z.infer<typeof listingFilterSchema>;
+export type CreateOrderInput = z.infer<typeof createOrderSchema>;
+export type FulfillOrderInput = z.infer<typeof fulfillOrderSchema>;
+export type OrderFilterInput = z.infer<typeof orderFilterSchema>;

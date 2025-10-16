@@ -7,7 +7,9 @@
       "Bash(npx shadcn@latest add:*)",
       "Bash(openssl rand:*)",
       "Bash(npm run typecheck)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run dev)"
     ],
     "deny": [],
     "ask": []

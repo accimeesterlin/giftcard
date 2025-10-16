@@ -317,3 +317,321 @@ export interface Inventory {
   updatedAt: Date;
   uploadedBy: string; // User ID
 }
+
+// ============================================================================
+// Order Types
+// ============================================================================
+
+export const OrderStatus = {
+  PENDING: "pending",
+  PROCESSING: "processing",
+  COMPLETED: "completed",
+  FAILED: "failed",
+  REFUNDED: "refunded",
+  DISPUTED: "disputed",
+} as const;
+
+export type OrderStatusType = (typeof OrderStatus)[keyof typeof OrderStatus];
+
+export const FulfillmentStatus = {
+  PENDING: "pending",
+  FULFILLED: "fulfilled",
+  FAILED: "failed",
+} as const;
+
+export type FulfillmentStatusType = (typeof FulfillmentStatus)[keyof typeof FulfillmentStatus];
+
+export const PaymentMethod = {
+  STRIPE: "stripe",
+  PAYPAL: "paypal",
+  CRYPTO: "crypto",
+  PGPAY: "pgpay",
+} as const;
+
+export type PaymentMethodType = (typeof PaymentMethod)[keyof typeof PaymentMethod];
+
+export interface Order {
+  id: string;
+  companyId: string; // Multi-tenant isolation
+
+  // Listing reference
+  listingId: string;
+  listingTitle: string; // Cached for display
+  brand: string; // Cached for display
+
+  // Purchase details
+  denomination: number;
+  quantity: number;
+  pricePerUnit: number; // Final price after discount
+  discountPercentage: number; // Applied discount
+  subtotal: number; // denomination * quantity
+  discount: number; // Calculated discount amount
+  total: number; // Amount customer paid
+
+  currency: string;
+
+  // Customer info
+  customerEmail: string;
+  customerName: string | null;
+  customerId: string | null; // User ID if registered
+
+  // Payment
+  paymentMethod: PaymentMethodType;
+  paymentIntentId: string | null; // Stripe/PayPal transaction ID
+  paymentStatus: OrderStatusType;
+  paidAt: Date | null;
+
+  // Fulfillment
+  fulfillmentStatus: FulfillmentStatusType;
+  fulfilledAt: Date | null;
+  fulfilledBy: string | null; // User ID of agent/manager who fulfilled
+  giftCardCodes: Array<{
+    inventoryId: string;
+    code: string; // Decrypted for delivery
+    pin: string | null;
+    serialNumber: string | null;
+  }> | null;
+
+  // Delivery
+  deliveryMethod: "email" | "api" | "manual";
+  deliveryEmail: string | null;
+  deliveredAt: Date | null;
+
+  // Metadata
+  ipAddress: string | null;
+  userAgent: string | null;
+  notes: string | null;
+
+  // Timestamps
+  createdAt: Date;
+  updatedAt: Date;
+  expiresAt: Date | null; // For pending payments
+}
+
+// ============================================================================
+// Payment Provider Types
+// ============================================================================
+
+export const PaymentProviderStatus = {
+  DISCONNECTED: "disconnected",
+  CONNECTED: "connected",
+  PENDING: "pending",
+  ERROR: "error",
+} as const;
+
+export type PaymentProviderStatusType = (typeof PaymentProviderStatus)[keyof typeof PaymentProviderStatus];
+
+export interface PaymentProviderConfig {
+  id: string;
+  companyId: string;
+  provider: PaymentProviderType;
+  status: PaymentProviderStatusType;
+
+  // Provider-specific credentials (encrypted)
+  publicKey: string | null; // Stripe publishable key, PayPal client ID
+  secretKey: string | null; // Stripe secret key, PayPal client secret (encrypted)
+  webhookSecret: string | null; // For webhook signature verification (encrypted)
+
+  // Provider-specific settings
+  accountId: string | null; // Stripe Connect account ID, PayPal merchant ID
+  walletAddress: string | null; // For crypto payments
+
+  // Configuration
+  testMode: boolean;
+  enabled: boolean;
+
+  // Metadata
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy: string; // User ID
+  lastTestedAt: Date | null;
+}
+
+export interface PaymentIntent {
+  id: string;
+  orderId: string;
+  companyId: string;
+  provider: PaymentProviderType;
+
+  // Amount details
+  amount: number;
+  currency: string;
+
+  // Provider reference
+  providerIntentId: string; // Stripe payment intent ID, PayPal order ID
+  providerStatus: string; // Provider-specific status
+
+  // Customer info
+  customerEmail: string;
+  customerName: string | null;
+
+  // Status
+  status: "pending" | "processing" | "succeeded" | "failed" | "canceled";
+
+  // URLs (for redirect-based flows)
+  successUrl: string | null;
+  cancelUrl: string | null;
+
+  // Metadata
+  metadata: Record<string, unknown>;
+  errorMessage: string | null;
+
+  // Timestamps
+  createdAt: Date;
+  updatedAt: Date;
+  completedAt: Date | null;
+}
+
+export interface PaymentRefund {
+  id: string;
+  orderId: string;
+  paymentIntentId: string;
+  companyId: string;
+  provider: PaymentProviderType;
+
+  // Refund details
+  amount: number;
+  currency: string;
+  reason: string | null;
+
+  // Provider reference
+  providerRefundId: string; // Stripe refund ID, PayPal refund ID
+  providerStatus: string;
+
+  // Status
+  status: "pending" | "processing" | "succeeded" | "failed" | "canceled";
+
+  // Initiated by
+  requestedBy: string; // User ID
+
+  // Metadata
+  metadata: Record<string, unknown>;
+  errorMessage: string | null;
+
+  // Timestamps
+  createdAt: Date;
+  updatedAt: Date;
+  completedAt: Date | null;
+}
+
+// ============================================================================
+// API Key & Webhook Types
+// ============================================================================
+
+export const ApiKeyStatus = {
+  ACTIVE: "active",
+  REVOKED: "revoked",
+  EXPIRED: "expired",
+} as const;
+
+export type ApiKeyStatusType = (typeof ApiKeyStatus)[keyof typeof ApiKeyStatus];
+
+export interface ApiKey {
+  id: string;
+  companyId: string;
+  name: string; // User-friendly name for the key
+  description: string | null;
+
+  // Key details
+  keyPrefix: string; // First 8 chars of key for display (e.g., "gck_live_")
+  keyHash: string; // Hashed API key (never store plain text)
+  lastUsedAt: Date | null;
+
+  // Permissions & Scopes
+  scopes: string[]; // e.g., ["orders:read", "orders:write", "inventory:read"]
+  environment: "test" | "live";
+
+  // Rate limiting
+  rateLimit: number; // Requests per minute
+  rateLimitWindow: number; // Window in seconds
+
+  // Status
+  status: ApiKeyStatusType;
+  expiresAt: Date | null;
+
+  // Metadata
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy: string; // User ID
+  revokedAt: Date | null;
+  revokedBy: string | null;
+}
+
+export const WebhookEventType = {
+  ORDER_CREATED: "order.created",
+  ORDER_PAID: "order.paid",
+  ORDER_FULFILLED: "order.fulfilled",
+  ORDER_FAILED: "order.failed",
+  ORDER_REFUNDED: "order.refunded",
+  INVENTORY_LOW: "inventory.low",
+  INVENTORY_OUT: "inventory.out",
+} as const;
+
+export type WebhookEventTypeType = (typeof WebhookEventType)[keyof typeof WebhookEventType];
+
+export const WebhookStatus = {
+  ACTIVE: "active",
+  DISABLED: "disabled",
+  FAILED: "failed",
+} as const;
+
+export type WebhookStatusType = (typeof WebhookStatus)[keyof typeof WebhookStatus];
+
+export interface WebhookEndpoint {
+  id: string;
+  companyId: string;
+  url: string;
+  description: string | null;
+
+  // Configuration
+  events: WebhookEventTypeType[]; // Events to subscribe to
+  secret: string; // For HMAC signature verification
+  enabled: boolean;
+  status: WebhookStatusType;
+
+  // Stats
+  lastTriggeredAt: Date | null;
+  successCount: number;
+  failureCount: number;
+  lastFailureAt: Date | null;
+  lastFailureReason: string | null;
+
+  // Metadata
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy: string; // User ID
+}
+
+export interface WebhookDelivery {
+  id: string;
+  webhookEndpointId: string;
+  companyId: string;
+
+  // Event details
+  event: WebhookEventTypeType;
+  payload: Record<string, unknown>;
+
+  // Delivery details
+  url: string;
+  httpMethod: "POST";
+  headers: Record<string, string>;
+
+  // Response
+  statusCode: number | null;
+  responseBody: string | null;
+  responseTime: number | null; // milliseconds
+
+  // Status
+  status: "pending" | "success" | "failed" | "retrying";
+  attempts: number;
+  maxAttempts: number;
+  nextRetryAt: Date | null;
+
+  // Error tracking
+  errorMessage: string | null;
+
+  // Timestamps
+  createdAt: Date;
+  updatedAt: Date;
+  deliveredAt: Date | null;
+}

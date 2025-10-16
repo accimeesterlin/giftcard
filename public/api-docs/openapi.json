@@ -1,0 +1,399 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Gift Card Marketplace API",
+    "version": "1.0.0",
+    "description": "Public API for programmatic access to the Gift Card Marketplace platform. This API allows you to manage orders, inventory, listings, and webhooks programmatically.",
+    "contact": {
+      "name": "API Support",
+      "email": "api-support@giftcardmarketplace.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.giftcardmarketplace.com/api/public/v1",
+      "description": "Production server"
+    },
+    {
+      "url": "http://localhost:3000/api/public/v1",
+      "description": "Development server"
+    }
+  ],
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Orders",
+      "description": "Order management endpoints"
+    },
+    {
+      "name": "Inventory",
+      "description": "Inventory management endpoints"
+    },
+    {
+      "name": "Listings",
+      "description": "Listing management endpoints"
+    },
+    {
+      "name": "Webhooks",
+      "description": "Webhook configuration endpoints"
+    }
+  ],
+  "paths": {
+    "/orders": {
+      "get": {
+        "tags": ["Orders"],
+        "summary": "List orders",
+        "description": "Retrieve a list of orders for your company. Supports filtering by status and pagination.",
+        "operationId": "listOrders",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "companyId",
+            "in": "query",
+            "required": true,
+            "description": "Your company ID",
+            "schema": {
+              "type": "string",
+              "example": "comp_abc123"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Filter orders by status",
+            "schema": {
+              "type": "string",
+              "enum": ["pending", "paid", "fulfilled", "failed", "refunded"]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Number of orders to return (max 100)",
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "description": "Number of orders to skip",
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "description": "The maximum number of requests per minute",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "The number of requests remaining in the current window",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "ISO timestamp when the rate limit resets",
+                "schema": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Order"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "offset": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitError"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "API Key",
+        "description": "API key authentication. Format: `Bearer gck_live_xxxxx` or `Bearer gck_test_xxxxx`. You can create API keys in your dashboard under Settings > API Keys."
+      }
+    },
+    "schemas": {
+      "Order": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique order identifier",
+            "example": "order_abc123"
+          },
+          "companyId": {
+            "type": "string",
+            "description": "Company that owns this order",
+            "example": "comp_abc123"
+          },
+          "listingId": {
+            "type": "string",
+            "description": "Listing that was purchased",
+            "example": "listing_abc123"
+          },
+          "buyerEmail": {
+            "type": "string",
+            "format": "email",
+            "description": "Buyer's email address",
+            "example": "buyer@example.com"
+          },
+          "quantity": {
+            "type": "integer",
+            "description": "Number of gift cards purchased",
+            "example": 1
+          },
+          "unitPrice": {
+            "type": "number",
+            "description": "Price per gift card",
+            "example": 50.00
+          },
+          "totalAmount": {
+            "type": "number",
+            "description": "Total order amount",
+            "example": 50.00
+          },
+          "currency": {
+            "type": "string",
+            "description": "Currency code",
+            "example": "USD"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "paid", "fulfilled", "failed", "refunded"],
+            "description": "Order status"
+          },
+          "paymentMethod": {
+            "type": "string",
+            "enum": ["stripe", "paypal", "crypto", "pgpay"],
+            "description": "Payment method used"
+          },
+          "fulfillmentMethod": {
+            "type": "string",
+            "enum": ["api", "email"],
+            "description": "How the gift cards are delivered"
+          },
+          "giftCards": {
+            "type": "array",
+            "description": "Delivered gift card codes (only available after fulfillment)",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "example": "XXXX-XXXX-XXXX"
+                },
+                "pin": {
+                  "type": "string",
+                  "example": "1234"
+                },
+                "value": {
+                  "type": "number",
+                  "example": 50.00
+                }
+              }
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the order was created"
+          },
+          "paidAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When payment was received",
+            "nullable": true
+          },
+          "fulfilledAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the order was fulfilled",
+            "nullable": true
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Error code",
+            "example": "UNAUTHORIZED"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message",
+            "example": "Invalid API key"
+          },
+          "statusCode": {
+            "type": "integer",
+            "description": "HTTP status code",
+            "example": 401
+          },
+          "details": {
+            "type": "object",
+            "description": "Additional error details",
+            "nullable": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the error occurred"
+          }
+        }
+      }
+    },
+    "responses": {
+      "UnauthorizedError": {
+        "description": "Authentication failed - invalid or missing API key",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid API key",
+                "statusCode": 401,
+                "timestamp": "2025-01-15T10:30:00Z"
+              }
+            }
+          }
+        }
+      },
+      "ForbiddenError": {
+        "description": "Permission denied - API key lacks required scope",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "FORBIDDEN",
+                "message": "This API key does not have the required scope: orders:read",
+                "statusCode": 403,
+                "timestamp": "2025-01-15T10:30:00Z"
+              }
+            }
+          }
+        }
+      },
+      "RateLimitError": {
+        "description": "Rate limit exceeded",
+        "headers": {
+          "X-RateLimit-Limit": {
+            "description": "The maximum number of requests per minute",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "X-RateLimit-Remaining": {
+            "description": "The number of requests remaining (will be 0)",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "X-RateLimit-Reset": {
+            "description": "ISO timestamp when the rate limit resets",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "example": {
+              "error": {
+                "code": "TOO_MANY_REQUESTS",
+                "message": "Rate limit exceeded. Limit: 60 requests per minute. Try again in 45 seconds.",
+                "statusCode": 429,
+                "timestamp": "2025-01-15T10:30:00Z"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

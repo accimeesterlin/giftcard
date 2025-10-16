@@ -130,10 +130,8 @@ export const Errors = {
   },
 
   // Rate limiting
-  tooManyRequests(retryAfter?: number) {
-    return new AppError("TOO_MANY_REQUESTS", 429, "Too many requests", {
-      retryAfter,
-    });
+  tooManyRequests(message = "Too many requests", details?: Record<string, unknown>) {
+    return new AppError("TOO_MANY_REQUESTS", 429, message, details);
   },
 
   // Invitation errors
