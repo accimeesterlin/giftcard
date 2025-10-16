@@ -45,9 +45,12 @@ export function CustomerFormDialog({
   onOpenChange,
   companyId,
   onSuccess,
+  customer,
 }: CustomerFormDialogProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const isEditMode = !!customer;
 
   const {
     register,
@@ -64,37 +67,76 @@ export function CustomerFormDialog({
   });
 
   useEffect(() => {
-    if (!open) {
-      reset();
+    if (open && customer) {
+      // Populate form with customer data in edit mode
+      reset({
+        email: customer.email,
+        name: customer.name || "",
+        phone: customer.phone || "",
+      });
+    } else if (!open) {
+      reset({
+        email: "",
+        name: "",
+        phone: "",
+      });
       setMessage(null);
     }
-  }, [open, reset]);
+  }, [open, customer, reset]);
 
   const onSubmit = async (data: CustomerFormData) => {
     setIsSaving(true);
     setMessage(null);
 
     try {
-      const payload = {
-        email: data.email,
-        name: data.name || null,
-        phone: data.phone || null,
-      };
+      if (isEditMode && customer) {
+        // Update existing customer
+        const payload = {
+          name: data.name || null,
+          phone: data.phone || null,
+        };
 
-      const response = await fetch(`/api/v1/companies/${companyId}/customers`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+        const response = await fetch(
+          `/api/v1/companies/${companyId}/customers/${customer.id}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+          }
+        );
 
-      if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error?.message || "Failed to create customer");
+        if (!response.ok) {
+          const result = await response.json();
+          throw new Error(result.error?.message || "Failed to update customer");
+        }
+
+        setMessage({ type: "success", text: "Customer updated successfully" });
+      } else {
+        // Create new customer
+        const payload = {
+          email: data.email,
+          name: data.name || null,
+          phone: data.phone || null,
+        };
+
+        const response = await fetch(`/api/v1/companies/${companyId}/customers`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          const result = await response.json();
+          throw new Error(result.error?.message || "Failed to create customer");
+        }
+
+        setMessage({ type: "success", text: "Customer created successfully" });
       }
 
-      setMessage({ type: "success", text: "Customer created successfully" });
       onSuccess();
 
       // Close dialog after a short delay
@@ -104,7 +146,7 @@ export function CustomerFormDialog({
     } catch (error) {
       setMessage({
         type: "error",
-        text: error instanceof Error ? error.message : "Failed to create customer",
+        text: error instanceof Error ? error.message : `Failed to ${isEditMode ? "update" : "create"} customer`,
       });
     } finally {
       setIsSaving(false);
@@ -115,9 +157,11 @@ export function CustomerFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Add New Customer</DialogTitle>
+          <DialogTitle>{isEditMode ? "Edit Customer" : "Add New Customer"}</DialogTitle>
           <DialogDescription>
-            Add a new customer to your database. You can use this to manually track customers.
+            {isEditMode
+              ? "Update customer information."
+              : "Add a new customer to your database. You can use this to manually track customers."}
           </DialogDescription>
         </DialogHeader>
 
@@ -145,10 +189,13 @@ export function CustomerFormDialog({
                 type="email"
                 placeholder="customer@example.com"
                 {...register("email")}
-                disabled={isSaving}
+                disabled={isSaving || isEditMode}
               />
               {errors.email && (
                 <p className="text-xs text-destructive">{errors.email.message}</p>
+              )}
+              {isEditMode && (
+                <p className="text-xs text-muted-foreground">Email cannot be changed</p>
               )}
             </div>
 
@@ -194,7 +241,13 @@ export function CustomerFormDialog({
             </Button>
             <Button type="submit" disabled={isSaving}>
               {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isSaving ? "Creating..." : "Create Customer"}
+              {isSaving
+                ? isEditMode
+                  ? "Updating..."
+                  : "Creating..."
+                : isEditMode
+                ? "Update Customer"
+                : "Create Customer"}
             </Button>
           </DialogFooter>
         </form>

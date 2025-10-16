@@ -14,7 +14,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { UserCircle, Search, Loader2, ShoppingBag, DollarSign, Plus } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { UserCircle, Search, Loader2, ShoppingBag, DollarSign, Plus, Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { CustomerFormDialog } from "@/components/customer-form-dialog";
 import { CustomerDetailSidebar } from "@/components/customer-detail-sidebar";
@@ -47,6 +57,9 @@ export default function CustomersPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchCustomers();
@@ -82,6 +95,48 @@ export default function CustomersPage() {
   };
 
   const handleCustomerSuccess = () => {
+    fetchCustomers();
+    setEditingCustomer(null);
+  };
+
+  const handleEditCustomer = (customer: Customer) => {
+    setEditingCustomer(customer);
+    setIsSidebarOpen(false);
+    setIsDialogOpen(true);
+  };
+
+  const handleDeleteClick = (customer: Customer) => {
+    setDeletingCustomer(customer);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingCustomer || !company) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(
+        `/api/v1/companies/${company.id}/customers/${deletingCustomer.id}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error?.message || "Failed to delete customer");
+      }
+
+      fetchCustomers();
+      setDeletingCustomer(null);
+    } catch (error) {
+      console.error("Failed to delete customer:", error);
+      alert(error instanceof Error ? error.message : "Failed to delete customer");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteCustomer = () => {
     fetchCustomers();
   };
 
@@ -193,13 +248,14 @@ export default function CustomersPage() {
                   <TableHead>Total Spent</TableHead>
                   <TableHead>Last Purchase</TableHead>
                   <TableHead>Member Since</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredCustomers.map((customer) => (
                   <TableRow
                     key={customer.id}
-                    className="cursor-pointer hover:bg-muted/50"
+                    className="cursor-pointer hover:bg-muted/50 group"
                     onClick={() => {
                       setSelectedCustomer(customer);
                       setIsSidebarOpen(true);
@@ -228,6 +284,30 @@ export default function CustomersPage() {
                     <TableCell className="text-sm text-muted-foreground">
                       {format(new Date(customer.createdAt), "MMM d, yyyy")}
                     </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditCustomer(customer);
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(customer);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -240,9 +320,15 @@ export default function CustomersPage() {
       {company && (
         <CustomerFormDialog
           open={isDialogOpen}
-          onOpenChange={setIsDialogOpen}
+          onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) {
+              setEditingCustomer(null);
+            }
+          }}
           companyId={company.id}
           onSuccess={handleCustomerSuccess}
+          customer={editingCustomer}
         />
       )}
 
@@ -253,8 +339,35 @@ export default function CustomersPage() {
           onOpenChange={setIsSidebarOpen}
           customer={selectedCustomer}
           companyId={company.id}
+          onEdit={handleEditCustomer}
+          onDelete={handleDeleteCustomer}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingCustomer} onOpenChange={(open) => !open && setDeletingCustomer(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Customer</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {deletingCustomer?.name || deletingCustomer?.email}? This
+              action cannot be undone. The customer's order history will be preserved,
+              but the customer record will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -11,6 +11,7 @@ import CompanyMembership from "@/lib/db/models/CompanyMembership";
 import AuditLog from "@/lib/db/models/AuditLog";
 import { Errors } from "@/lib/errors";
 import type { WebhookEventTypeType } from "@/types";
+import { WebhookLogService } from "./webhook-log.service";
 
 interface CreateWebhookInput {
   companyId: string;
@@ -266,41 +267,110 @@ export class WebhookService {
     attempt: number = 1
   ): Promise<void> {
     const maxAttempts = 3;
+    const startTime = Date.now();
+    let responseStatus: number | null = null;
+    let responseHeaders: Record<string, string> | null = null;
+    let responseBody: any = null;
+    let success = false;
+    let errorMessage: string | null = null;
 
     try {
       // Generate HMAC signature
       const signature = this.generateSignature(payload, webhook.secret);
 
+      // Prepare request headers
+      const requestHeaders = {
+        "Content-Type": "application/json",
+        "X-Webhook-Signature": signature,
+        "X-Webhook-Event": payload.event,
+        "X-Webhook-Id": payload.id,
+        "User-Agent": "GiftCardMarketplace-Webhooks/1.0",
+      };
+
       // Send webhook
-      const startTime = Date.now();
       const response = await fetch(webhook.url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Webhook-Signature": signature,
-          "X-Webhook-Event": payload.event,
-          "X-Webhook-Id": payload.id,
-          "User-Agent": "GiftCardMarketplace-Webhooks/1.0",
-        },
+        headers: requestHeaders,
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(10000), // 10 second timeout
       });
 
-      const responseTime = Date.now() - startTime;
+      const duration = Date.now() - startTime;
+
+      // Capture response details
+      responseStatus = response.status;
+      responseHeaders = Object.fromEntries(response.headers.entries());
+
+      // Try to parse response body
+      const contentType = response.headers.get("content-type");
+      if (contentType?.includes("application/json")) {
+        try {
+          responseBody = await response.json();
+        } catch {
+          responseBody = await response.text();
+        }
+      } else {
+        responseBody = await response.text();
+      }
 
       if (response.ok) {
+        success = true;
         await webhook.recordSuccess();
         console.log(`Webhook delivered successfully to ${webhook.url}`);
       } else {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+        errorMessage = `HTTP ${response.status}: ${typeof responseBody === 'string' ? responseBody : JSON.stringify(responseBody)}`;
+        throw new Error(errorMessage);
+      }
+
+      // Create webhook log (only for final attempt or success)
+      if (success || attempt === maxAttempts) {
+        await WebhookLogService.create({
+          webhookId: webhook.id,
+          companyId: webhook.companyId,
+          event: payload.event,
+          url: webhook.url,
+          method: "POST",
+          requestHeaders,
+          requestBody: payload,
+          responseStatus,
+          responseHeaders,
+          responseBody,
+          success,
+          errorMessage,
+          duration,
+        });
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const duration = Date.now() - startTime;
+      errorMessage = error instanceof Error ? error.message : "Unknown error";
       console.error(`Webhook delivery failed (attempt ${attempt}/${maxAttempts}):`, errorMessage);
 
       // Record failure
       await webhook.recordFailure(errorMessage);
+
+      // Create webhook log for final attempt
+      if (attempt === maxAttempts) {
+        await WebhookLogService.create({
+          webhookId: webhook.id,
+          companyId: webhook.companyId,
+          event: payload.event,
+          url: webhook.url,
+          method: "POST",
+          requestHeaders: {
+            "Content-Type": "application/json",
+            "X-Webhook-Event": payload.event,
+            "X-Webhook-Id": payload.id,
+            "User-Agent": "GiftCardMarketplace-Webhooks/1.0",
+          },
+          requestBody: payload,
+          responseStatus,
+          responseHeaders,
+          responseBody,
+          success: false,
+          errorMessage,
+          duration,
+        });
+      }
 
       // Retry with exponential backoff
       if (attempt < maxAttempts) {

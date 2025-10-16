@@ -9,6 +9,7 @@ import CompanyMembership from "@/lib/db/models/CompanyMembership";
 import AuditLog from "@/lib/db/models/AuditLog";
 import { Errors } from "@/lib/errors";
 import type { CreateCustomerInput, UpdateCustomerInput } from "@/lib/validation/schemas";
+import { WebhookService } from "./webhook.service";
 
 export class CustomerService {
   /**
@@ -56,6 +57,17 @@ export class CustomerService {
       metadata: {
         email: customer.email,
         name: customer.name,
+      },
+    });
+
+    // Trigger webhooks
+    await WebhookService.triggerWebhooks(companyId, "customer.created", {
+      customer: {
+        id: customer.id,
+        email: customer.email,
+        name: customer.name,
+        phone: customer.phone,
+        createdAt: customer.createdAt,
       },
     });
 
@@ -145,6 +157,18 @@ export class CustomerService {
       changes,
     });
 
+    // Trigger webhooks
+    await WebhookService.triggerWebhooks(companyId, "customer.updated", {
+      customer: {
+        id: customer.id,
+        email: customer.email,
+        name: customer.name,
+        phone: customer.phone,
+        updatedAt: customer.updatedAt,
+      },
+      changes,
+    });
+
     return customer;
   }
 
@@ -179,6 +203,15 @@ export class CustomerService {
       resourceType: "customer",
       resourceId: customer.id,
       metadata: {
+        email: customer.email,
+        name: customer.name,
+      },
+    });
+
+    // Trigger webhooks
+    await WebhookService.triggerWebhooks(companyId, "customer.deleted", {
+      customer: {
+        id: customer.id,
         email: customer.email,
         name: customer.name,
       },

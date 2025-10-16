@@ -35,11 +35,12 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Webhook, Copy, Trash2, Edit2, Send, CheckCircle, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { Loader2, Webhook, Copy, Trash2, Edit2, Send, CheckCircle, AlertCircle, Eye, EyeOff, FileText } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
+import { WebhookLogsDialog } from "@/components/webhook-logs-dialog";
 
 const createWebhookSchema = z.object({
   url: z.string().url("Please enter a valid URL"),
@@ -101,6 +102,8 @@ export default function WebhooksPage() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [webhookToDelete, setWebhookToDelete] = useState<string | null>(null);
+  const [showLogsDialog, setShowLogsDialog] = useState(false);
+  const [logsWebhookId, setLogsWebhookId] = useState<string | null>(null);
 
   const {
     register: registerCreate,
@@ -172,6 +175,9 @@ export default function WebhooksPage() {
       { event: "order.refunded", description: "Order has been refunded" },
       { event: "inventory.low", description: "Inventory is running low" },
       { event: "inventory.out", description: "Inventory is out of stock" },
+      { event: "customer.created", description: "Customer has been created" },
+      { event: "customer.updated", description: "Customer has been updated" },
+      { event: "customer.deleted", description: "Customer has been deleted" },
     ]);
   };
 
@@ -336,6 +342,22 @@ export default function WebhooksPage() {
     }
   };
 
+  const selectAllCreateEvents = () => {
+    setValueCreate("events", availableEvents.map((e) => e.event));
+  };
+
+  const deselectAllCreateEvents = () => {
+    setValueCreate("events", []);
+  };
+
+  const selectAllUpdateEvents = () => {
+    setValueUpdate("events", availableEvents.map((e) => e.event));
+  };
+
+  const deselectAllUpdateEvents = () => {
+    setValueUpdate("events", []);
+  };
+
   const toggleSecretVisibility = (webhookId: string) => {
     const newVisible = new Set(visibleSecrets);
     if (newVisible.has(webhookId)) {
@@ -349,6 +371,11 @@ export default function WebhooksPage() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setMessage({ type: "success", text: "Copied to clipboard!" });
+  };
+
+  const handleViewLogs = (webhookId: string) => {
+    setLogsWebhookId(webhookId);
+    setShowLogsDialog(true);
   };
 
   const getStatusBadge = (webhook: WebhookEndpoint) => {
@@ -395,7 +422,7 @@ export default function WebhooksPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Webhooks</h1>
@@ -523,6 +550,14 @@ export default function WebhooksPage() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          onClick={() => handleViewLogs(webhook.id)}
+                          title="View logs"
+                        >
+                          <FileText className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleTest(webhook.id)}
                           disabled={isTesting === webhook.id}
                           title="Send test event"
@@ -591,7 +626,29 @@ export default function WebhooksPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Events * (Select at least one)</Label>
+              <div className="flex items-center justify-between">
+                <Label>Events * (Select at least one)</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={selectAllCreateEvents}
+                    className="h-7 text-xs"
+                  >
+                    Select All
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={deselectAllCreateEvents}
+                    className="h-7 text-xs"
+                  >
+                    Deselect All
+                  </Button>
+                </div>
+              </div>
               {errorsCreate.events && (
                 <p className="text-sm text-destructive">{errorsCreate.events.message}</p>
               )}
@@ -670,7 +727,29 @@ export default function WebhooksPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Events * (Select at least one)</Label>
+              <div className="flex items-center justify-between">
+                <Label>Events * (Select at least one)</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={selectAllUpdateEvents}
+                    className="h-7 text-xs"
+                  >
+                    Select All
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={deselectAllUpdateEvents}
+                    className="h-7 text-xs"
+                  >
+                    Deselect All
+                  </Button>
+                </div>
+              </div>
               {errorsUpdate.events && (
                 <p className="text-sm text-destructive">{errorsUpdate.events.message}</p>
               )}
@@ -757,6 +836,16 @@ export default function WebhooksPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Webhook Logs Dialog */}
+      {company && logsWebhookId && (
+        <WebhookLogsDialog
+          open={showLogsDialog}
+          onOpenChange={setShowLogsDialog}
+          webhookId={logsWebhookId}
+          companyId={company.id}
+        />
+      )}
     </div>
   );
 }

@@ -10,7 +10,18 @@ import {
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Mail, Phone, User, ShoppingBag, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Loader2, Mail, Phone, User, ShoppingBag, Calendar, Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 
 interface Customer {
@@ -42,6 +53,8 @@ interface CustomerDetailSidebarProps {
   onOpenChange: (open: boolean) => void;
   customer: Customer | null;
   companyId: string;
+  onEdit: (customer: Customer) => void;
+  onDelete: (customer: Customer) => void;
 }
 
 export function CustomerDetailSidebar({
@@ -49,9 +62,13 @@ export function CustomerDetailSidebar({
   onOpenChange,
   customer,
   companyId,
+  onEdit,
+  onDelete,
 }: CustomerDetailSidebarProps) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (open && customer) {
@@ -107,16 +124,64 @@ export function CustomerDetailSidebar({
     );
   };
 
+  const handleDelete = async () => {
+    if (!customer) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(
+        `/api/v1/companies/${companyId}/customers/${customer.id}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error?.message || "Failed to delete customer");
+      }
+
+      setShowDeleteDialog(false);
+      onOpenChange(false);
+      onDelete(customer);
+    } catch (error) {
+      console.error("Failed to delete customer:", error);
+      alert(error instanceof Error ? error.message : "Failed to delete customer");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (!customer) return null;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>Customer Details</SheetTitle>
-          <SheetDescription>
-            View customer information and order history
-          </SheetDescription>
+          <div className="flex items-start justify-between">
+            <div>
+              <SheetTitle>Customer Details</SheetTitle>
+              <SheetDescription>
+                View customer information and order history
+              </SheetDescription>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onEdit(customer)}
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </div>
+          </div>
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
@@ -230,6 +295,31 @@ export function CustomerDetailSidebar({
           </div>
         </div>
       </SheetContent>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Customer</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {customer.name || customer.email}? This
+              action cannot be undone. The customer's order history will be preserved,
+              but the customer record will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sheet>
   );
 }
