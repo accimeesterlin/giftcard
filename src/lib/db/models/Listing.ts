@@ -79,6 +79,19 @@ const ListingSchema = new Schema<ListingDocument>(
       max: 100,
       default: 0,
     },
+    sellerFeePercentage: {
+      type: Number,
+      required: true,
+      min: 0,
+      max: 100,
+      default: 0,
+    },
+    sellerFeeFixed: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0,
+    },
     currency: {
       type: String,
       required: true,

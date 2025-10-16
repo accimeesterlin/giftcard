@@ -245,6 +245,8 @@ export interface Listing {
   // Pricing & Availability
   denominations: number[]; // Available values, e.g., [10, 25, 50, 100]
   discountPercentage: number; // Discount offered, e.g., 5 means 5% off
+  sellerFeePercentage: number; // Percentage fee charged by seller, e.g., 2 means 2% markup
+  sellerFeeFixed: number; // Fixed fee amount charged by seller
   currency: string; // ISO currency code
   countries: string[]; // ISO country codes where available
 
@@ -406,6 +408,33 @@ export interface Order {
   createdAt: Date;
   updatedAt: Date;
   expiresAt: Date | null; // For pending payments
+}
+
+// ============================================================================
+// Customer Types
+// ============================================================================
+
+export interface Customer {
+  id: string;
+  companyId: string; // Multi-tenant isolation
+
+  // Basic info
+  email: string;
+  name: string | null;
+  phone: string | null;
+
+  // Purchase stats
+  totalPurchases: number;
+  totalSpent: number;
+  lastPurchaseAt: Date | null;
+
+  // User link
+  userId: string | null; // Link to registered user if applicable
+
+  // Metadata
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy: string; // User ID who added the customer
 }
 
 // ============================================================================

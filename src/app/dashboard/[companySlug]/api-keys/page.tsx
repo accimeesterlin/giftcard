@@ -16,6 +16,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -79,6 +89,8 @@ export default function ApiKeysPage() {
   const [showKeyDialog, setShowKeyDialog] = useState(false);
   const [newApiKey, setNewApiKey] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [isRevokeDialogOpen, setIsRevokeDialogOpen] = useState(false);
+  const [keyToRevoke, setKeyToRevoke] = useState<string | null>(null);
 
   const {
     register,
@@ -182,12 +194,16 @@ export default function ApiKeysPage() {
     }
   };
 
-  const handleRevokeKey = async (keyId: string) => {
-    if (!company || !confirm("Are you sure you want to revoke this API key? This cannot be undone."))
-      return;
+  const openRevokeDialog = (keyId: string) => {
+    setKeyToRevoke(keyId);
+    setIsRevokeDialogOpen(true);
+  };
+
+  const handleRevokeKey = async () => {
+    if (!company || !keyToRevoke) return;
 
     try {
-      const response = await fetch(`/api/v1/companies/${company.id}/api-keys/${keyId}`, {
+      const response = await fetch(`/api/v1/companies/${company.id}/api-keys/${keyToRevoke}`, {
         method: "DELETE",
       });
 
@@ -203,6 +219,9 @@ export default function ApiKeysPage() {
         type: "error",
         text: error instanceof Error ? error.message : "Failed to revoke API key",
       });
+    } finally {
+      setIsRevokeDialogOpen(false);
+      setKeyToRevoke(null);
     }
   };
 
@@ -274,7 +293,7 @@ export default function ApiKeysPage() {
             Manage API keys for programmatic access to {company.displayName}
           </p>
         </div>
-        <Button onClick={() => setShowCreateDialog(true)}>
+        <Button onClick={() => setShowCreateDialog(true)} variant="default">
           <Key className="mr-2 h-4 w-4" />
           Create API Key
         </Button>
@@ -352,7 +371,7 @@ export default function ApiKeysPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleRevokeKey(key.id)}
+                          onClick={() => openRevokeDialog(key.id)}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -501,6 +520,28 @@ export default function ApiKeysPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Revoke Confirmation Dialog */}
+      <AlertDialog open={isRevokeDialogOpen} onOpenChange={setIsRevokeDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revoke API Key</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to revoke this API key? This action cannot be undone and will
+              immediately invalidate the key.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRevokeKey}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Revoke Key
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -16,6 +16,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -89,6 +99,8 @@ export default function WebhooksPage() {
   const [editingWebhook, setEditingWebhook] = useState<WebhookEndpoint | null>(null);
   const [visibleSecrets, setVisibleSecrets] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [webhookToDelete, setWebhookToDelete] = useState<string | null>(null);
 
   const {
     register: registerCreate,
@@ -241,12 +253,16 @@ export default function WebhooksPage() {
     setShowEditDialog(true);
   };
 
-  const handleDelete = async (webhookId: string) => {
-    if (!company || !confirm("Are you sure you want to delete this webhook? This cannot be undone."))
-      return;
+  const openDeleteDialog = (webhookId: string) => {
+    setWebhookToDelete(webhookId);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!company || !webhookToDelete) return;
 
     try {
-      const response = await fetch(`/api/v1/companies/${company.id}/webhooks/${webhookId}`, {
+      const response = await fetch(`/api/v1/companies/${company.id}/webhooks/${webhookToDelete}`, {
         method: "DELETE",
       });
 
@@ -262,6 +278,9 @@ export default function WebhooksPage() {
         type: "error",
         text: error instanceof Error ? error.message : "Failed to delete webhook",
       });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setWebhookToDelete(null);
     }
   };
 
@@ -384,7 +403,7 @@ export default function WebhooksPage() {
             Receive real-time notifications when events happen in {company.displayName}
           </p>
         </div>
-        <Button onClick={() => setShowCreateDialog(true)}>
+        <Button onClick={() => setShowCreateDialog(true)} variant="default">
           <Webhook className="mr-2 h-4 w-4" />
           Create Webhook
         </Button>
@@ -525,7 +544,7 @@ export default function WebhooksPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDelete(webhook.id)}
+                          onClick={() => openDeleteDialog(webhook.id)}
                           title="Delete webhook"
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
@@ -716,6 +735,28 @@ export default function WebhooksPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Webhook</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this webhook? This action cannot be undone and will
+              stop receiving events at this endpoint.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

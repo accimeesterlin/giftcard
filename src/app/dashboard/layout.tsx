@@ -103,7 +103,7 @@ export default async function DashboardLayout({
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 container py-6 px-4">
+      <main className="flex-1">
         {children}
       </main>
 

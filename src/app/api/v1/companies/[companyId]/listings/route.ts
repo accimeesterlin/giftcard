@@ -26,13 +26,13 @@ export async function GET(
     // Parse query parameters
     const { searchParams } = new URL(request.url);
     const filters = listingFilterSchema.parse({
-      page: searchParams.get("page"),
-      limit: searchParams.get("limit"),
-      status: searchParams.get("status"),
-      brand: searchParams.get("brand"),
-      category: searchParams.get("category"),
-      cardType: searchParams.get("cardType"),
-      search: searchParams.get("search"),
+      page: searchParams.get("page") || undefined,
+      limit: searchParams.get("limit") || undefined,
+      status: searchParams.get("status") || undefined,
+      brand: searchParams.get("brand") || undefined,
+      category: searchParams.get("category") || undefined,
+      cardType: searchParams.get("cardType") || undefined,
+      search: searchParams.get("search") || undefined,
     });
 
     const result = await ListingService.getByCompany(companyId, userId, filters);

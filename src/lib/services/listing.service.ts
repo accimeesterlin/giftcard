@@ -49,6 +49,8 @@ export class ListingService {
       category: input.category,
       denominations: input.denominations,
       discountPercentage: input.discountPercentage || 0,
+      sellerFeePercentage: input.sellerFeePercentage || 0,
+      sellerFeeFixed: input.sellerFeeFixed || 0,
       currency: input.currency.toUpperCase(),
       countries: input.countries,
       imageUrl: input.imageUrl || null,
@@ -140,6 +142,22 @@ export class ListingService {
         to: updates.discountPercentage,
       };
       listing.discountPercentage = updates.discountPercentage;
+    }
+
+    if (updates.sellerFeePercentage !== undefined) {
+      changes.sellerFeePercentage = {
+        from: listing.sellerFeePercentage,
+        to: updates.sellerFeePercentage,
+      };
+      listing.sellerFeePercentage = updates.sellerFeePercentage;
+    }
+
+    if (updates.sellerFeeFixed !== undefined) {
+      changes.sellerFeeFixed = {
+        from: listing.sellerFeeFixed,
+        to: updates.sellerFeeFixed,
+      };
+      listing.sellerFeeFixed = updates.sellerFeeFixed;
     }
 
     if (updates.countries !== undefined) {
@@ -392,9 +410,8 @@ export class ListingService {
 
     // Update listing stock count
     listing.totalStock += inventoryItems.length;
-    if (listing.status === "out_of_stock" && listing.totalStock > 0) {
-      listing.status = "draft"; // Change from out_of_stock to draft when stock added
-    }
+    // Note: We don't automatically change listing status when adding inventory
+    // Let the seller manually activate the listing when ready
     await listing.save();
 
     // Create audit log
@@ -476,5 +493,290 @@ export class ListingService {
         ),
       })),
     };
+  }
+
+  /**
+   * Get inventory summary for a listing (simplified for UI)
+   */
+  static async getInventorySummary(companyId: string, listingId: string, userId: string) {
+    await connectDB();
+
+    // Verify user has access
+    const membership = await CompanyMembership.findByUserAndCompany(userId, companyId);
+
+    if (!membership) {
+      throw Errors.companyAccessDenied(companyId);
+    }
+
+    // Verify listing exists and belongs to company
+    const listing = await Listing.findOne({ id: listingId, companyId });
+
+    if (!listing) {
+      throw Errors.notFound("Listing");
+    }
+
+    // Get inventory summary grouped by denomination
+    const inventory = await Inventory.aggregate([
+      { $match: { listingId } },
+      {
+        $group: {
+          _id: { denomination: "$denomination", status: "$status" },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $group: {
+          _id: "$_id.denomination",
+          statuses: {
+            $push: {
+              status: "$_id.status",
+              count: "$count",
+            },
+          },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    // Transform to simple summary format
+    return inventory.map((item) => {
+      const statusMap = item.statuses.reduce(
+        (acc: Record<string, number>, s: { status: string; count: number }) => {
+          acc[s.status] = s.count;
+          return acc;
+        },
+        {}
+      );
+
+      return {
+        denomination: item._id,
+        available: statusMap.available || 0,
+        sold: statusMap.sold || 0,
+        reserved: statusMap.reserved || 0,
+        total: Object.values(statusMap).reduce((sum: number, count: any) => sum + count, 0),
+      };
+    });
+  }
+
+  /**
+   * Get codes by denomination
+   */
+  static async getCodesByDenomination(
+    companyId: string,
+    listingId: string,
+    denomination: number,
+    userId: string,
+    options?: { search?: string; page?: number; limit?: number }
+  ) {
+    await connectDB();
+
+    // Verify user has access
+    const membership = await CompanyMembership.findByUserAndCompany(userId, companyId);
+
+    if (!membership) {
+      throw Errors.companyAccessDenied(companyId);
+    }
+
+    // Verify listing exists and belongs to company
+    const listing = await Listing.findOne({ id: listingId, companyId });
+
+    if (!listing) {
+      throw Errors.notFound("Listing");
+    }
+
+    // Build query
+    const query: any = {
+      listingId,
+      denomination,
+    };
+
+    // Add search filter if provided
+    if (options?.search) {
+      query.$or = [
+        { code: new RegExp(options.search, "i") },
+        { pin: new RegExp(options.search, "i") },
+        { serialNumber: new RegExp(options.search, "i") },
+      ];
+    }
+
+    // Pagination
+    const page = options?.page || 1;
+    const limit = options?.limit || 50;
+    const skip = (page - 1) * limit;
+
+    // Get codes with code and pin fields explicitly selected
+    // Use .lean() to get plain objects and bypass toJSON transform that deletes sensitive fields
+    const [codes, total] = await Promise.all([
+      Inventory.find(query)
+        .select("+code +pin") // Explicitly select fields that have select: false
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(), // Get plain objects instead of Mongoose documents
+      Inventory.countDocuments(query),
+    ]);
+
+    // Map to clean response format with needed fields
+    const cleanedCodes = codes.map((code: any) => ({
+      id: code.id,
+      code: code.code,
+      pin: code.pin,
+      serialNumber: code.serialNumber,
+      status: code.status,
+      soldAt: code.soldAt,
+      expiresAt: code.expiresAt,
+      createdAt: code.createdAt,
+    }));
+
+    return {
+      data: cleanedCodes,
+      pagination: {
+        page,
+        limit,
+        total,
+        hasMore: total > page * limit,
+      },
+    };
+  }
+
+  /**
+   * Update a specific code
+   */
+  static async updateCode(
+    companyId: string,
+    listingId: string,
+    codeId: string,
+    updates: { code?: string; pin?: string | null; serialNumber?: string | null },
+    userId: string
+  ) {
+    await connectDB();
+
+    // Verify user has manager+ permissions
+    const membership = await CompanyMembership.findByUserAndCompany(userId, companyId);
+
+    if (!membership || !membership.hasMinimumRole("manager")) {
+      throw Errors.insufficientPermissions("manager", companyId);
+    }
+
+    // Get code with code and pin fields explicitly selected
+    const code = await Inventory.findOne({ id: codeId, listingId, companyId }).select(
+      "+code +pin"
+    );
+
+    if (!code) {
+      throw Errors.notFound("Code");
+    }
+
+    // Only allow editing available codes
+    if (code.status !== "available") {
+      throw Errors.badRequest("Only available codes can be edited");
+    }
+
+    // Track changes for audit log
+    const changes: Record<string, unknown> = {};
+
+    // Apply updates
+    if (updates.code !== undefined) {
+      changes.code = { from: code.code, to: updates.code };
+      code.code = updates.code;
+    }
+
+    if (updates.pin !== undefined) {
+      changes.pin = { from: code.pin, to: updates.pin };
+      code.pin = updates.pin;
+    }
+
+    if (updates.serialNumber !== undefined) {
+      changes.serialNumber = { from: code.serialNumber, to: updates.serialNumber };
+      code.serialNumber = updates.serialNumber;
+    }
+
+    await code.save();
+
+    // Create audit log
+    await AuditLog.createLog({
+      companyId,
+      userId,
+      action: "inventory.code_updated",
+      resourceType: "inventory",
+      resourceId: code.id,
+      changes,
+      metadata: {
+        listingId,
+        denomination: code.denomination,
+      },
+    });
+
+    // Return plain object with sensitive fields included
+    return {
+      id: code.id,
+      code: code.code,
+      pin: code.pin,
+      serialNumber: code.serialNumber,
+      status: code.status,
+      soldAt: code.soldAt,
+      expiresAt: code.expiresAt,
+      createdAt: code.createdAt,
+    };
+  }
+
+  /**
+   * Delete a specific code
+   */
+  static async deleteCode(
+    companyId: string,
+    listingId: string,
+    codeId: string,
+    userId: string
+  ) {
+    await connectDB();
+
+    // Verify user has manager+ permissions
+    const membership = await CompanyMembership.findByUserAndCompany(userId, companyId);
+
+    if (!membership || !membership.hasMinimumRole("manager")) {
+      throw Errors.insufficientPermissions("manager", companyId);
+    }
+
+    // Get code with code field explicitly selected for audit log
+    const code = await Inventory.findOne({ id: codeId, listingId, companyId }).select("+code");
+
+    if (!code) {
+      throw Errors.notFound("Code");
+    }
+
+    // Only allow deleting available codes
+    if (code.status !== "available") {
+      throw Errors.badRequest("Only available codes can be deleted");
+    }
+
+    // Delete code
+    await Inventory.deleteOne({ id: codeId });
+
+    // Update listing stock count
+    const listing = await Listing.findOne({ id: listingId, companyId });
+    if (listing) {
+      listing.totalStock = Math.max(0, listing.totalStock - 1);
+      if (listing.totalStock === 0) {
+        listing.status = "out_of_stock";
+      }
+      await listing.save();
+    }
+
+    // Create audit log
+    await AuditLog.createLog({
+      companyId,
+      userId,
+      action: "inventory.code_deleted",
+      resourceType: "inventory",
+      resourceId: code.id,
+      metadata: {
+        listingId,
+        denomination: code.denomination,
+        code: code.code,
+      },
+    });
+
+    return { success: true };
   }
 }

@@ -1,12 +1,23 @@
 import { auth } from "@/lib/auth";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { Building2, Package, ShoppingCart, Users } from "lucide-react";
+import { redirect } from "next/navigation";
+import { CompanyService } from "@/lib/services/company.service";
 
 export default async function DashboardPage() {
   const session = await auth();
 
+  if (!session?.user?.id) {
+    redirect("/auth/signin");
+  }
+
+  // Get user's companies and redirect to the first one
+  const companies = await CompanyService.getUserCompanies(session.user.id);
+
+  if (companies.length > 0) {
+    // Redirect to the first company's dashboard
+    redirect(`/dashboard/${companies[0].slug}`);
+  }
+
+  // If no companies, show the getting started page
   return (
     <div className="space-y-8">
       {/* Welcome Section */}

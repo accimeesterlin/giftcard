@@ -184,6 +184,8 @@ export const createListingSchema = z.object({
   category: z.string().min(1).max(50),
   denominations: z.array(z.number().positive()).min(1),
   discountPercentage: z.number().min(0).max(100).default(0),
+  sellerFeePercentage: z.number().min(0).max(100).default(0),
+  sellerFeeFixed: z.number().min(0).default(0),
   currency: z.string().length(3).toUpperCase(),
   countries: z.array(z.string().length(2)).min(1),
   imageUrl: z.string().url().optional().nullable(),
@@ -201,6 +203,8 @@ export const updateListingSchema = z.object({
   category: z.string().min(1).max(50).optional(),
   denominations: z.array(z.number().positive()).min(1).optional(),
   discountPercentage: z.number().min(0).max(100).optional(),
+  sellerFeePercentage: z.number().min(0).max(100).optional(),
+  sellerFeeFixed: z.number().min(0).optional(),
   countries: z.array(z.string().length(2)).min(1).optional(),
   imageUrl: z.string().url().optional().nullable(),
   brandLogoUrl: z.string().url().optional().nullable(),
@@ -309,6 +313,25 @@ export const auditLogQuerySchema = paginationSchema.extend({
 });
 
 // ============================================================================
+// Customer Schemas
+// ============================================================================
+
+export const createCustomerSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(1).max(100).optional().nullable(),
+  phone: z.string().max(20).optional().nullable(),
+});
+
+export const updateCustomerSchema = z.object({
+  name: z.string().min(1).max(100).optional().nullable(),
+  phone: z.string().max(20).optional().nullable(),
+});
+
+export const customerFilterSchema = paginationSchema.extend({
+  search: z.string().max(100).optional(),
+});
+
+// ============================================================================
 // Type Exports
 // ============================================================================
 
@@ -324,3 +347,6 @@ export type ListingFilterInput = z.infer<typeof listingFilterSchema>;
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 export type FulfillOrderInput = z.infer<typeof fulfillOrderSchema>;
 export type OrderFilterInput = z.infer<typeof orderFilterSchema>;
+export type CreateCustomerInput = z.infer<typeof createCustomerSchema>;
+export type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>;
+export type CustomerFilterInput = z.infer<typeof customerFilterSchema>;

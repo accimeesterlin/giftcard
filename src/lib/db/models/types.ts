@@ -8,6 +8,7 @@ import type {
   Company,
   CompanyMembership,
   AuditLog as AuditLogType,
+  Customer,
 } from "@/types";
 
 // Use simpler types that just extend Model with static methods
@@ -66,4 +67,14 @@ export interface AuditLogDocument extends AuditLogType {
 
 export interface AuditLogModel extends Model<AuditLogDocument> {
   createLog(log: Partial<AuditLogType>): Promise<AuditLogDocument>;
+}
+
+// Customer Model Interface
+export interface CustomerDocument extends Customer {
+  save(): Promise<this>;
+}
+
+export interface CustomerModel extends Model<CustomerDocument> {
+  findByEmail(companyId: string, email: string): Promise<CustomerDocument | null>;
+  findByCompany(companyId: string): Promise<CustomerDocument[]>;
 }

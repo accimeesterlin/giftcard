@@ -21,9 +21,12 @@ export async function GET(
 ) {
   try {
     const userId = await requireUserId();
-    const { companyId, listingId } = await params;
+    const { companyId, listingId: listingIdParam } = await params;
 
-    const result = await ListingService.getInventory(companyId, listingId, userId);
+    // First get the listing to retrieve its UUID id field
+    const listing = await ListingService.getById(companyId, listingIdParam);
+
+    const result = await ListingService.getInventory(companyId, listing.id, userId);
 
     return NextResponse.json(
       {
@@ -63,13 +66,16 @@ export async function POST(
 ) {
   try {
     const userId = await requireUserId();
-    const { companyId, listingId } = await params;
+    const { companyId, listingId: listingIdParam } = await params;
+
+    // First get the listing to retrieve its UUID id field
+    const listing = await ListingService.getById(companyId, listingIdParam);
 
     // Parse and validate request body
     const body = await request.json();
     const input = bulkUploadCodesSchema.parse({
       ...body,
-      listingId, // Ensure listingId from URL is used
+      listingId: listing.id, // Use listing's UUID id, not the URL param
     });
 
     const result = await ListingService.addInventory(companyId, userId, input);

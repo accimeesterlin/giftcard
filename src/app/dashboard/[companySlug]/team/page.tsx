@@ -20,6 +20,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -74,6 +84,8 @@ export default function TeamManagementPage() {
   const [isSending, setIsSending] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<string | null>(null);
 
   const {
     register,
@@ -154,11 +166,16 @@ export default function TeamManagementPage() {
     }
   };
 
-  const handleRemoveMember = async (memberId: string) => {
-    if (!company || !confirm("Are you sure you want to remove this member?")) return;
+  const openRemoveDialog = (memberId: string) => {
+    setMemberToRemove(memberId);
+    setIsRemoveDialogOpen(true);
+  };
+
+  const handleRemoveMember = async () => {
+    if (!company || !memberToRemove) return;
 
     try {
-      const response = await fetch(`/api/v1/companies/${company.id}/members/${memberId}`, {
+      const response = await fetch(`/api/v1/companies/${company.id}/members/${memberToRemove}`, {
         method: "DELETE",
       });
 
@@ -168,6 +185,9 @@ export default function TeamManagementPage() {
       }
     } catch (error) {
       setMessage({ type: "error", text: "Failed to remove member" });
+    } finally {
+      setIsRemoveDialogOpen(false);
+      setMemberToRemove(null);
     }
   };
 
@@ -363,7 +383,7 @@ export default function TeamManagementPage() {
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
-                              onClick={() => handleRemoveMember(member.userId)}
+                              onClick={() => openRemoveDialog(member.userId)}
                               className="text-destructive"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
@@ -380,6 +400,28 @@ export default function TeamManagementPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Remove Member Confirmation Dialog */}
+      <AlertDialog open={isRemoveDialogOpen} onOpenChange={setIsRemoveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Team Member</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this member? They will lose access to the company and
+              all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemoveMember}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove Member
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

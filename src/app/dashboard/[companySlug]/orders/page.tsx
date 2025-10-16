@@ -21,6 +21,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Loader2, MoreHorizontal, CheckCircle, Eye, Send } from "lucide-react";
 import { format } from "date-fns";
 
@@ -56,6 +66,8 @@ export default function OrdersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isFulfilling, setIsFulfilling] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [isFulfillDialogOpen, setIsFulfillDialogOpen] = useState(false);
+  const [orderToFulfill, setOrderToFulfill] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCompanyAndOrders();
@@ -90,16 +102,20 @@ export default function OrdersPage() {
     }
   };
 
-  const handleFulfillOrder = async (orderId: string) => {
-    if (!company || !confirm("Fulfill this order and send gift card codes to the customer?"))
-      return;
+  const openFulfillDialog = (orderId: string) => {
+    setOrderToFulfill(orderId);
+    setIsFulfillDialogOpen(true);
+  };
 
-    setIsFulfilling(orderId);
+  const handleFulfillOrder = async () => {
+    if (!company || !orderToFulfill) return;
+
+    setIsFulfilling(orderToFulfill);
     setMessage(null);
 
     try {
       const response = await fetch(
-        `/api/v1/companies/${company.id}/orders/${orderId}/fulfill`,
+        `/api/v1/companies/${company.id}/orders/${orderToFulfill}/fulfill`,
         {
           method: "POST",
         }
@@ -120,6 +136,8 @@ export default function OrdersPage() {
       });
     } finally {
       setIsFulfilling(null);
+      setIsFulfillDialogOpen(false);
+      setOrderToFulfill(null);
     }
   };
 
@@ -277,7 +295,7 @@ export default function OrdersPage() {
                           {order.paymentStatus === "completed" &&
                             order.fulfillmentStatus === "pending" && (
                               <DropdownMenuItem
-                                onClick={() => handleFulfillOrder(order.id)}
+                                onClick={() => openFulfillDialog(order.id)}
                                 disabled={isFulfilling === order.id}
                               >
                                 {isFulfilling === order.id ? (
@@ -309,6 +327,28 @@ export default function OrdersPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Fulfill Confirmation Dialog */}
+      <AlertDialog open={isFulfillDialogOpen} onOpenChange={setIsFulfillDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Fulfill Order</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to fulfill this order? Gift card codes will be automatically
+              sent to the customer's email address.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleFulfillOrder}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              Fulfill Order
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

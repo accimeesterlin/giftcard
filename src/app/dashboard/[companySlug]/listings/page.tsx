@@ -1,10 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -21,10 +29,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Loader2, Plus, MoreHorizontal, Edit, Trash2, Package, Eye } from "lucide-react";
+import { Loader2, Plus, MoreHorizontal, Edit, Trash2, Package, Eye, Search, ChevronLeft, ChevronRight, Copy, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { ListingFormDialog } from "@/components/listing-form-dialog";
 import { InventoryUploadDialog } from "@/components/inventory-upload-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Listing {
   id: string;
@@ -49,17 +67,30 @@ interface Company {
 
 export default function ListingsPage() {
   const params = useParams();
+  const router = useRouter();
   const companySlug = params.companySlug as string;
   const [company, setCompany] = useState<Company | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  // Search and filter states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [cardTypeFilter, setCardTypeFilter] = useState("all");
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isInventoryDialogOpen, setIsInventoryDialogOpen] = useState(false);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [listingToDelete, setListingToDelete] = useState<string | null>(null);
+  const [updatingStatusFor, setUpdatingStatusFor] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCompanyAndListings();
@@ -94,12 +125,12 @@ export default function ListingsPage() {
     }
   };
 
-  const handleDeleteListing = async (listingId: string) => {
-    if (!company || !confirm("Are you sure you want to delete this listing?")) return;
+  const handleDeleteListing = async () => {
+    if (!company || !listingToDelete) return;
 
     try {
       const response = await fetch(
-        `/api/v1/companies/${company.id}/listings/${listingId}`,
+        `/api/v1/companies/${company.id}/listings/${listingToDelete}`,
         {
           method: "DELETE",
         }
@@ -117,7 +148,15 @@ export default function ListingsPage() {
         type: "error",
         text: error instanceof Error ? error.message : "Failed to delete listing",
       });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setListingToDelete(null);
     }
+  };
+
+  const openDeleteDialog = (listingId: string) => {
+    setListingToDelete(listingId);
+    setIsDeleteDialogOpen(true);
   };
 
   const handleEditListing = (listing: Listing) => {
@@ -133,6 +172,52 @@ export default function ListingsPage() {
   const handleDialogSuccess = () => {
     setMessage({ type: "success", text: "Operation completed successfully" });
     fetchCompanyAndListings();
+  };
+
+  const handleQuickStatusChange = async (listingId: string, newStatus: string) => {
+    if (!company) return;
+
+    setUpdatingStatusFor(listingId);
+    try {
+      const response = await fetch(
+        `/api/v1/companies/${company.id}/listings/${listingId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: newStatus }),
+        }
+      );
+
+      if (response.ok) {
+        setMessage({ type: "success", text: `Status updated to ${newStatus}` });
+        fetchCompanyAndListings();
+      } else {
+        const result = await response.json();
+        throw new Error(result.error?.message || "Failed to update status");
+      }
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text: error instanceof Error ? error.message : "Failed to update status",
+      });
+    } finally {
+      setUpdatingStatusFor(null);
+    }
+  };
+
+  const copyPreviewLink = async (listingId: string) => {
+    const previewUrl = `${window.location.origin}/marketplace/${companySlug}/${listingId}`;
+    try {
+      await navigator.clipboard.writeText(previewUrl);
+      setMessage({ type: "success", text: "Preview link copied to clipboard" });
+    } catch (error) {
+      setMessage({ type: "error", text: "Failed to copy link" });
+    }
+  };
+
+  const viewAsBuyer = (listingId: string) => {
+    const previewUrl = `/marketplace/${companySlug}/${listingId}`;
+    window.open(previewUrl, "_blank");
   };
 
   const getStatusBadge = (status: string) => {
@@ -174,8 +259,37 @@ export default function ListingsPage() {
     );
   }
 
+  // Filter listings based on search and filters
+  const filteredListings = listings.filter((listing) => {
+    // Search filter
+    const matchesSearch =
+      searchQuery === "" ||
+      listing.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      listing.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      listing.category.toLowerCase().includes(searchQuery.toLowerCase());
+
+    // Status filter
+    const matchesStatus = statusFilter === "all" || listing.status === statusFilter;
+
+    // Card type filter
+    const matchesCardType = cardTypeFilter === "all" || listing.cardType === cardTypeFilter;
+
+    return matchesSearch && matchesStatus && matchesCardType;
+  });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredListings.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedListings = filteredListings.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  const handleFilterChange = () => {
+    setCurrentPage(1);
+  };
+
   return (
-    <div className="space-y-6 max-w-7xl">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Gift Card Listings</h1>
@@ -184,7 +298,7 @@ export default function ListingsPage() {
           </p>
         </div>
 
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
+        <Button onClick={() => setIsCreateDialogOpen(true)} variant="default">
           <Plus className="mr-2 h-4 w-4" />
           Create Listing
         </Button>
@@ -202,9 +316,66 @@ export default function ListingsPage() {
         </div>
       )}
 
+      {/* Search and Filters */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by title, brand, or category..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  handleFilterChange();
+                }}
+                className="pl-9"
+              />
+            </div>
+            <Select
+              value={statusFilter}
+              onValueChange={(value) => {
+                setStatusFilter(value);
+                handleFilterChange();
+              }}
+            >
+              <SelectTrigger className="w-full md:w-[180px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="out_of_stock">Out of Stock</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={cardTypeFilter}
+              onValueChange={(value) => {
+                setCardTypeFilter(value);
+                handleFilterChange();
+              }}
+            >
+              <SelectTrigger className="w-full md:w-[180px]">
+                <SelectValue placeholder="Card Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="digital">Digital</SelectItem>
+                <SelectItem value="physical">Physical</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
-          <CardTitle>All Listings ({listings.length})</CardTitle>
+          <CardTitle>
+            All Listings ({filteredListings.length}
+            {filteredListings.length !== listings.length && ` of ${listings.length}`})
+          </CardTitle>
           <CardDescription>
             View and manage your gift card product catalog
           </CardDescription>
@@ -224,15 +395,21 @@ export default function ListingsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {listings.length === 0 ? (
+              {paginatedListings.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center text-muted-foreground">
-                    No listings yet. Create your first gift card listing to get started!
+                    {listings.length === 0
+                      ? "No listings yet. Create your first gift card listing to get started!"
+                      : "No listings match your search criteria."}
                   </TableCell>
                 </TableRow>
               ) : (
-                listings.map((listing) => (
-                  <TableRow key={listing.id}>
+                paginatedListings.map((listing) => (
+                  <TableRow
+                    key={listing.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => router.push(`/dashboard/${companySlug}/listings/${listing.id}`)}
+                  >
                     <TableCell>
                       <div>
                         <div className="font-medium">{listing.title}</div>
@@ -273,11 +450,27 @@ export default function ListingsPage() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{getStatusBadge(listing.status)}</TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Select
+                        value={listing.status}
+                        onValueChange={(value) => handleQuickStatusChange(listing.id, value)}
+                        disabled={updatingStatusFor === listing.id}
+                      >
+                        <SelectTrigger className="w-[140px] h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="draft">Draft</SelectItem>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                          <SelectItem value="out_of_stock">Out of Stock</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {format(new Date(listing.createdAt), "MMM d, yyyy")}
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
@@ -287,7 +480,11 @@ export default function ListingsPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem disabled>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              router.push(`/dashboard/${companySlug}/listings/${listing.id}`)
+                            }
+                          >
                             <Eye className="mr-2 h-4 w-4" />
                             View Details
                           </DropdownMenuItem>
@@ -300,8 +497,17 @@ export default function ListingsPage() {
                             Manage Inventory
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => copyPreviewLink(listing.id)}>
+                            <Copy className="mr-2 h-4 w-4" />
+                            Copy Preview Link
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => viewAsBuyer(listing.id)}>
+                            <ExternalLink className="mr-2 h-4 w-4" />
+                            View as Buyer
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem
-                            onClick={() => handleDeleteListing(listing.id)}
+                            onClick={() => openDeleteDialog(listing.id)}
                             className="text-destructive"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
@@ -315,6 +521,39 @@ export default function ListingsPage() {
               )}
             </TableBody>
           </Table>
+
+          {/* Pagination */}
+          {filteredListings.length > 0 && (
+            <div className="flex items-center justify-between px-2 py-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                Showing {startIndex + 1} to {Math.min(endIndex, filteredListings.length)} of{" "}
+                {filteredListings.length} results
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Previous
+                </Button>
+                <div className="text-sm font-medium">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -349,6 +588,27 @@ export default function ListingsPage() {
           )}
         </>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Listing</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this listing? This action cannot be undone and will permanently remove the listing and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteListing}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
