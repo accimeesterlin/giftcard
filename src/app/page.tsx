@@ -81,7 +81,7 @@ export default async function Home() {
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="text-sm sm:text-base h-11 sm:h-12 border-2">
+              <Button asChild variant="outline" size="lg" className="text-sm sm:text-base h-11 sm:h-12 border-2 font-semibold hover:bg-accent">
                 <Link href="/auth/signin">View Demo</Link>
               </Button>
             </div>

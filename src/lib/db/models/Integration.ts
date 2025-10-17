@@ -7,6 +7,7 @@ export interface IIntegration extends Document {
   type: "email" | "payment" | "analytics" | "other";
   config: Record<string, any>;
   enabled: boolean;
+  primary: boolean;
   lastSyncedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -54,6 +55,11 @@ const IntegrationSchema = new Schema<IIntegration>(
       required: true,
       default: true,
     },
+    primary: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
     lastSyncedAt: {
       type: Date,
     },
@@ -85,6 +91,13 @@ IntegrationSchema.statics.findActiveByType = function (
   return this.find({ companyId, type, enabled: true });
 };
 
+IntegrationSchema.statics.findPrimaryByType = function (
+  companyId: string,
+  type: string
+) {
+  return this.findOne({ companyId, type, primary: true });
+};
+
 // Instance methods
 IntegrationSchema.methods.enable = async function () {
   this.enabled = true;
@@ -100,6 +113,17 @@ IntegrationSchema.methods.updateConfig = async function (
   config: Record<string, any>
 ) {
   this.config = { ...this.config, ...config };
+  return this.save();
+};
+
+IntegrationSchema.methods.setPrimary = async function () {
+  // Unset any other primary integration of the same type for this company
+  await this.constructor.updateMany(
+    { companyId: this.companyId, type: this.type, primary: true },
+    { primary: false }
+  );
+
+  this.primary = true;
   return this.save();
 };
 

@@ -8,12 +8,23 @@ import { updateIntegrationSchema } from "@/lib/validation/schemas";
 import { toAppError, Errors } from "@/lib/errors";
 
 // Encryption helpers
-const ENCRYPTION_KEY = process.env.INTEGRATION_ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
+const ENCRYPTION_KEY = process.env.INTEGRATION_ENCRYPTION_KEY || crypto.randomBytes(32).toString('base64');
 const ALGORITHM = 'aes-256-gcm';
+
+// Derive a proper 32-byte key from the encryption key string
+function getEncryptionKey(): Buffer {
+  if (!ENCRYPTION_KEY) {
+    throw new Error('INTEGRATION_ENCRYPTION_KEY must be set in environment variables');
+  }
+
+  // Create a SHA-256 hash of the key to ensure it's always 32 bytes
+  return crypto.createHash('sha256').update(ENCRYPTION_KEY).digest();
+}
 
 function encrypt(text: string): string {
   const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv(ALGORITHM, Buffer.from(ENCRYPTION_KEY, 'hex').slice(0, 32), iv);
+  const key = getEncryptionKey();
+  const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
 
   let encrypted = cipher.update(text, 'utf8', 'hex');
   encrypted += cipher.final('hex');
@@ -29,7 +40,8 @@ function decrypt(encryptedText: string): string {
   const authTag = Buffer.from(parts[1], 'hex');
   const encrypted = parts[2];
 
-  const decipher = crypto.createDecipheriv(ALGORITHM, Buffer.from(ENCRYPTION_KEY, 'hex').slice(0, 32), iv);
+  const key = getEncryptionKey();
+  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
   decipher.setAuthTag(authTag);
 
   let decrypted = decipher.update(encrypted, 'hex', 'utf8');
@@ -87,6 +99,7 @@ export async function GET(
           type: integration.type,
           config,
           enabled: integration.enabled,
+          primary: integration.primary,
           lastSyncedAt: integration.lastSyncedAt,
           createdAt: integration.createdAt,
           updatedAt: integration.updatedAt,
@@ -137,7 +150,7 @@ export async function PATCH(
 
     // Validate request body
     const validatedData = updateIntegrationSchema.parse(body);
-    const { config, enabled } = validatedData;
+    const { config, enabled, primary } = validatedData;
 
     // Fetch integration
     const integration = await Integration.findOne({ id: integrationId, companyId });
@@ -171,7 +184,18 @@ export async function PATCH(
       integration.enabled = enabled;
     }
 
-    await integration.save();
+    // Update primary status if provided
+    if (typeof primary === "boolean") {
+      if (primary) {
+        // Use the setPrimary method to ensure only one primary per type
+        await integration.setPrimary();
+      } else {
+        integration.primary = false;
+        await integration.save();
+      }
+    } else {
+      await integration.save();
+    }
 
     return NextResponse.json(
       {
@@ -181,6 +205,7 @@ export async function PATCH(
           provider: integration.provider,
           type: integration.type,
           enabled: integration.enabled,
+          primary: integration.primary,
           createdAt: integration.createdAt,
           updatedAt: integration.updatedAt,
         },

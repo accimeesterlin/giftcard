@@ -351,6 +351,7 @@ export const createIntegrationSchema = z.object({
 export const updateIntegrationSchema = z.object({
   config: z.record(z.string(), z.any()).optional(),
   enabled: z.boolean().optional(),
+  primary: z.boolean().optional(),
 });
 
 // Email provider-specific config schemas

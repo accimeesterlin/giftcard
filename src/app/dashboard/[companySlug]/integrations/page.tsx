@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Mail, CheckCircle, XCircle, Settings, Trash2, AlertCircle } from "lucide-react";
+import { Loader2, Mail, CheckCircle, XCircle, Settings, Trash2, AlertCircle, TestTube, Star } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface EmailProvider {
@@ -38,6 +38,7 @@ interface Integration {
   provider: string;
   config: Record<string, string>;
   enabled: boolean;
+  primary: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -121,9 +122,14 @@ export default function IntegrationsPage() {
   const [selectedProvider, setSelectedProvider] = useState<EmailProvider | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [testingIntegrationId, setTestingIntegrationId] = useState<string | null>(null);
+  const [isTestDialogOpen, setIsTestDialogOpen] = useState(false);
+  const [testEmail, setTestEmail] = useState<string>("");
+  const [selectedIntegrationForTest, setSelectedIntegrationForTest] = useState<Integration | null>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [companyId, setCompanyId] = useState<string>("");
   const [error, setError] = useState<string>("");
+  const [successMessage, setSuccessMessage] = useState<string>("");
 
   // Fetch company ID from slug
   useEffect(() => {
@@ -177,6 +183,7 @@ export default function IntegrationsPage() {
   const handleConfigureProvider = (provider: EmailProvider) => {
     setSelectedProvider(provider);
     setError(""); // Clear any previous errors
+    setSuccessMessage(""); // Clear any previous success messages
 
     // Load existing integration data if available
     const existingIntegration = getIntegration(provider.id);
@@ -344,6 +351,101 @@ export default function IntegrationsPage() {
     }
   };
 
+  const handleOpenTestDialog = (integration: Integration) => {
+    setSelectedIntegrationForTest(integration);
+    setTestEmail("");
+    setError("");
+    setSuccessMessage("");
+    setIsTestDialogOpen(true);
+  };
+
+  const handleSendTestEmail = async () => {
+    if (!companyId || !selectedIntegrationForTest) return;
+
+    if (!testEmail || !testEmail.includes("@")) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
+    setTestingIntegrationId(selectedIntegrationForTest.id);
+    setError("");
+    setSuccessMessage("");
+
+    try {
+      const response = await fetch(
+        `/api/v1/companies/${companyId}/integrations/${selectedIntegrationForTest.id}/test`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            testEmail: testEmail,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error?.message || "Failed to send test email");
+      }
+
+      if (data.data.success) {
+        setSuccessMessage(data.data.message);
+        setIsTestDialogOpen(false);
+        setTestEmail("");
+      } else {
+        setError(data.data.message);
+      }
+    } catch (error) {
+      console.error("Failed to send test email:", error);
+      setError(error instanceof Error ? error.message : "Failed to send test email");
+    } finally {
+      setTestingIntegrationId(null);
+    }
+  };
+
+  const handleSetPrimary = async (integrationId: string, currentPrimary: boolean) => {
+    if (!companyId) return;
+
+    try {
+      const response = await fetch(
+        `/api/v1/companies/${companyId}/integrations/${integrationId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            primary: !currentPrimary,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || "Failed to set primary integration");
+      }
+
+      // Refresh integrations list
+      const integrationsResponse = await fetch(
+        `/api/v1/companies/${companyId}/integrations`
+      );
+      if (integrationsResponse.ok) {
+        const data = await integrationsResponse.json();
+        setIntegrations(data.data || []);
+      }
+
+      setSuccessMessage(!currentPrimary ? "Primary integration updated successfully" : "Primary status removed");
+    } catch (error) {
+      console.error("Failed to set primary integration:", error);
+      setError(
+        error instanceof Error ? error.message : "Failed to set primary integration"
+      );
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -365,6 +467,13 @@ export default function IntegrationsPage() {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {successMessage && (
+        <Alert>
+          <CheckCircle className="h-4 w-4" />
+          <AlertDescription>{successMessage}</AlertDescription>
         </Alert>
       )}
 
@@ -390,24 +499,36 @@ export default function IntegrationsPage() {
                     <div className="flex items-center gap-3">
                       <div className="text-3xl">{provider.icon}</div>
                       <div>
-                        <CardTitle className="text-lg">{provider.name}</CardTitle>
+                        <div className="flex items-center gap-2">
+                          <CardTitle className="text-lg">{provider.name}</CardTitle>
+                          {integration?.primary && (
+                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                          )}
+                        </div>
                       </div>
                     </div>
-                    {isConfigured && (
-                      <Badge variant={integration?.enabled ? "default" : "secondary"} className="ml-2">
-                        {integration?.enabled ? (
-                          <>
-                            <CheckCircle className="mr-1 h-3 w-3" />
-                            Active
-                          </>
-                        ) : (
-                          <>
-                            <XCircle className="mr-1 h-3 w-3" />
-                            Disabled
-                          </>
-                        )}
-                      </Badge>
-                    )}
+                    <div className="flex gap-2">
+                      {integration?.primary && (
+                        <Badge variant="outline" className="border-yellow-400 text-yellow-400">
+                          Primary
+                        </Badge>
+                      )}
+                      {isConfigured && (
+                        <Badge variant={integration?.enabled ? "default" : "secondary"}>
+                          {integration?.enabled ? (
+                            <>
+                              <CheckCircle className="mr-1 h-3 w-3" />
+                              Active
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className="mr-1 h-3 w-3" />
+                              Disabled
+                            </>
+                          )}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                   <CardDescription className="text-sm mt-2">{provider.description}</CardDescription>
                 </CardHeader>
@@ -416,31 +537,49 @@ export default function IntegrationsPage() {
                     <Button
                       onClick={() => handleConfigureProvider(provider)}
                       variant={isConfigured ? "outline" : "default"}
-                      className="w-full"
+                      size="sm"
                     >
                       <Settings className="mr-2 h-4 w-4" />
                       {isConfigured ? "Manage" : "Configure"}
                     </Button>
 
                     {isConfigured && integration && (
-                      <div className="flex gap-2">
+                      <>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => handleOpenTestDialog(integration)}
+                            variant="outline"
+                            size="sm"
+                          >
+                            <TestTube className="mr-2 h-4 w-4" />
+                            Test
+                          </Button>
+                          <Button
+                            onClick={() => handleToggleIntegration(integration.id, integration.enabled)}
+                            variant="outline"
+                            size="sm"
+                          >
+                            {integration.enabled ? "Disable" : "Enable"}
+                          </Button>
+                          <Button
+                            onClick={() => handleDeleteIntegration(integration.id)}
+                            variant="outline"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                         <Button
-                          onClick={() => handleToggleIntegration(integration.id, integration.enabled)}
-                          variant="outline"
+                          onClick={() => handleSetPrimary(integration.id, integration.primary)}
+                          variant={integration.primary ? "default" : "outline"}
                           size="sm"
-                          className="flex-1"
+                          className="w-full"
                         >
-                          {integration.enabled ? "Disable" : "Enable"}
+                          <Star className={`mr-2 h-4 w-4 ${integration.primary ? 'fill-white' : ''}`} />
+                          {integration.primary ? "Primary" : "Set as Primary"}
                         </Button>
-                        <Button
-                          onClick={() => handleDeleteIntegration(integration.id)}
-                          variant="outline"
-                          size="sm"
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      </>
                     )}
                   </div>
                 </CardContent>
@@ -505,6 +644,78 @@ export default function IntegrationsPage() {
                 </>
               ) : (
                 "Save Configuration"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Test Email Dialog */}
+      <Dialog open={isTestDialogOpen} onOpenChange={setIsTestDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <TestTube className="h-5 w-5" />
+              Test Email Integration
+            </DialogTitle>
+            <DialogDescription>
+              Send a test email to verify your integration is working correctly.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="testEmail">
+                Recipient Email Address
+                <span className="text-destructive ml-1">*</span>
+              </Label>
+              <Input
+                id="testEmail"
+                type="email"
+                placeholder="example@domain.com"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSendTestEmail();
+                  }
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                A test email will be sent to this address
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsTestDialogOpen(false)}
+              disabled={testingIntegrationId !== null}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSendTestEmail}
+              disabled={testingIntegrationId !== null || !testEmail}
+            >
+              {testingIntegrationId !== null ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <TestTube className="mr-2 h-4 w-4" />
+                  Send Test Email
+                </>
               )}
             </Button>
           </DialogFooter>
