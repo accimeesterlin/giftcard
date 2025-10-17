@@ -332,6 +332,66 @@ export const customerFilterSchema = paginationSchema.extend({
 });
 
 // ============================================================================
+// Integration Schemas
+// ============================================================================
+
+export const createIntegrationSchema = z.object({
+  provider: z.enum([
+    "zeptomail",
+    "sendgrid",
+    "mailgun",
+    "mailchimp",
+    "resend",
+    "postmark",
+  ]),
+  type: z.enum(["email", "payment", "analytics", "other"]),
+  config: z.record(z.string(), z.any()),
+});
+
+export const updateIntegrationSchema = z.object({
+  config: z.record(z.string(), z.any()).optional(),
+  enabled: z.boolean().optional(),
+});
+
+// Email provider-specific config schemas
+export const zeptomailConfigSchema = z.object({
+  apiKey: z.string().min(1, "API Key is required"),
+  fromEmail: z.string().email("Valid email is required"),
+  fromName: z.string().min(1, "From Name is required"),
+});
+
+export const sendgridConfigSchema = z.object({
+  apiKey: z.string().min(1, "API Key is required"),
+  fromEmail: z.string().email("Valid email is required"),
+  fromName: z.string().min(1, "From Name is required"),
+});
+
+export const mailgunConfigSchema = z.object({
+  apiKey: z.string().min(1, "API Key is required"),
+  domain: z.string().min(1, "Domain is required"),
+  fromEmail: z.string().email("Valid email is required"),
+  fromName: z.string().min(1, "From Name is required"),
+});
+
+export const mailchimpConfigSchema = z.object({
+  apiKey: z.string().min(1, "API Key is required"),
+  fromEmail: z.string().email("Valid email is required"),
+  fromName: z.string().min(1, "From Name is required"),
+});
+
+export const resendConfigSchema = z.object({
+  apiKey: z.string().min(1, "API Key is required"),
+  fromEmail: z.string().email("Valid email is required"),
+  fromName: z.string().min(1, "From Name is required"),
+});
+
+export const postmarkConfigSchema = z.object({
+  serverToken: z.string().min(1, "Server Token is required"),
+  fromEmail: z.string().email("Valid email is required"),
+  fromName: z.string().min(1, "From Name is required"),
+});
+
+// ============================================================================
 // Type Exports
 // ============================================================================
 
@@ -350,3 +410,5 @@ export type OrderFilterInput = z.infer<typeof orderFilterSchema>;
 export type CreateCustomerInput = z.infer<typeof createCustomerSchema>;
 export type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>;
 export type CustomerFilterInput = z.infer<typeof customerFilterSchema>;
+export type CreateIntegrationInput = z.infer<typeof createIntegrationSchema>;
+export type UpdateIntegrationInput = z.infer<typeof updateIntegrationSchema>;

@@ -126,11 +126,11 @@ export default function AcceptInvitationClient() {
 
   if (isLoading || status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30">
+      <div className="min-h-screen flex items-center justify-center bg-muted/30 px-3">
         <Card className="w-full max-w-md">
-          <CardContent className="flex flex-col items-center justify-center p-12">
-            <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">Loading invitation...</p>
+          <CardContent className="flex flex-col items-center justify-center p-8 sm:p-12">
+            <Loader2 className="h-10 w-10 sm:h-12 sm:w-12 animate-spin text-muted-foreground mb-3 sm:mb-4" />
+            <p className="text-sm sm:text-base text-muted-foreground">Loading invitation...</p>
           </CardContent>
         </Card>
       </div>
@@ -139,12 +139,12 @@ export default function AcceptInvitationClient() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30">
+      <div className="min-h-screen flex items-center justify-center bg-muted/30 px-3">
         <Card className="w-full max-w-md">
-          <CardContent className="flex flex-col items-center justify-center p-12">
-            <CheckCircle2 className="h-16 w-16 text-green-600 mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Invitation Accepted!</h2>
-            <p className="text-muted-foreground text-center">
+          <CardContent className="flex flex-col items-center justify-center p-8 sm:p-12">
+            <CheckCircle2 className="h-12 w-12 sm:h-16 sm:w-16 text-green-600 mb-3 sm:mb-4" />
+            <h2 className="text-xl sm:text-2xl font-bold mb-2 text-center">Invitation Accepted!</h2>
+            <p className="text-sm sm:text-base text-muted-foreground text-center">
               You are now a member of {invitation?.companyName}. Redirecting to your dashboard...
             </p>
           </CardContent>
@@ -155,15 +155,15 @@ export default function AcceptInvitationClient() {
 
   if (error || !invitation) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30">
+      <div className="min-h-screen flex items-center justify-center bg-muted/30 px-3">
         <Card className="w-full max-w-md">
-          <CardContent className="flex flex-col items-center justify-center p-12">
-            <XCircle className="h-16 w-16 text-destructive mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Invalid Invitation</h2>
-            <p className="text-muted-foreground text-center mb-6">
+          <CardContent className="flex flex-col items-center justify-center p-8 sm:p-12">
+            <XCircle className="h-12 w-12 sm:h-16 sm:w-16 text-destructive mb-3 sm:mb-4" />
+            <h2 className="text-xl sm:text-2xl font-bold mb-2 text-center">Invalid Invitation</h2>
+            <p className="text-sm sm:text-base text-muted-foreground text-center mb-4 sm:mb-6">
               {error || "This invitation link is invalid or has expired."}
             </p>
-            <Button onClick={() => router.push("/dashboard")}>Go to Dashboard</Button>
+            <Button onClick={() => router.push("/dashboard")} className="h-9 sm:h-10 text-sm sm:text-base">Go to Dashboard</Button>
           </CardContent>
         </Card>
       </div>
@@ -171,48 +171,48 @@ export default function AcceptInvitationClient() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-muted/30 p-3 sm:p-4">
       <Card className="w-full max-w-2xl">
-        <CardHeader className="text-center space-y-2">
-          <div className="flex justify-center mb-4">
-            <div className="p-4 rounded-full bg-primary/10">
-              <Building2 className="h-12 w-12 text-primary" />
+        <CardHeader className="text-center space-y-1.5 sm:space-y-2 p-4 sm:p-6">
+          <div className="flex justify-center mb-3 sm:mb-4">
+            <div className="p-3 sm:p-4 rounded-full bg-primary/10">
+              <Building2 className="h-10 w-10 sm:h-12 sm:w-12 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-3xl">Team Invitation</CardTitle>
-          <CardDescription className="text-base">
+          <CardTitle className="text-2xl sm:text-3xl">Team Invitation</CardTitle>
+          <CardDescription className="text-sm sm:text-base">
             You've been invited to join a team
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-6">
-          <div className="bg-muted/50 rounded-lg p-6 space-y-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Company</p>
-                <p className="text-xl font-semibold">{invitation.companyName}</p>
+        <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6 pt-0">
+          <div className="bg-muted/50 rounded-lg p-4 sm:p-6 space-y-3 sm:space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+              <div className="space-y-1 min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-muted-foreground">Company</p>
+                <p className="text-lg sm:text-xl font-semibold truncate">{invitation.companyName}</p>
               </div>
-              <Badge className={getRoleBadgeColor(invitation.role)}>
+              <Badge className={`${getRoleBadgeColor(invitation.role)} text-xs sm:text-sm`}>
                 <Shield className="mr-1 h-3 w-3" />
                 {invitation.role}
               </Badge>
             </div>
 
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Role & Permissions</p>
-              <p className="text-sm">{getRoleDescription(invitation.role)}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Role & Permissions</p>
+              <p className="text-xs sm:text-sm">{getRoleDescription(invitation.role)}</p>
             </div>
 
             {invitation.inviterName && (
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Invited by</p>
-                <p className="text-sm font-medium">{invitation.inviterName}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Invited by</p>
+                <p className="text-xs sm:text-sm font-medium">{invitation.inviterName}</p>
               </div>
             )}
 
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Expires</p>
-              <p className="text-sm">
+              <p className="text-xs sm:text-sm text-muted-foreground">Expires</p>
+              <p className="text-xs sm:text-sm">
                 {new Date(invitation.expiresAt).toLocaleDateString("en-US", {
                   year: "numeric",
                   month: "long",
@@ -225,35 +225,35 @@ export default function AcceptInvitationClient() {
           </div>
 
           {session && (
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-              <p className="text-sm text-blue-900 dark:text-blue-300">
-                Signed in as <span className="font-medium">{session.user?.email}</span>
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 sm:p-4">
+              <p className="text-xs sm:text-sm text-blue-900 dark:text-blue-300">
+                Signed in as <span className="font-medium break-all">{session.user?.email}</span>
               </p>
             </div>
           )}
 
-          <div className="flex flex-col-reverse sm:flex-row gap-3">
+          <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
             <Button
               variant="outline"
-              className="flex-1"
+              className="flex-1 h-9 sm:h-10 text-sm sm:text-base"
               onClick={handleDecline}
               disabled={isAccepting}
             >
               Decline
             </Button>
             <Button
-              className="flex-1"
+              className="flex-1 h-9 sm:h-10 text-sm sm:text-base"
               onClick={handleAcceptInvitation}
               disabled={isAccepting}
             >
               {isAccepting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                   Accepting...
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  <CheckCircle2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                   Accept Invitation
                 </>
               )}
@@ -261,7 +261,7 @@ export default function AcceptInvitationClient() {
           </div>
 
           {error && (
-            <div className="bg-destructive/15 text-destructive rounded-md p-3 text-sm">
+            <div className="bg-destructive/15 text-destructive rounded-md p-2.5 sm:p-3 text-xs sm:text-sm">
               {error}
             </div>
           )}

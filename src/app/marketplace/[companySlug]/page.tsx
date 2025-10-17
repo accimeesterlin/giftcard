@@ -101,15 +101,15 @@ function MarketplaceHomeContent() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
               {company.logo && (
-                <img src={company.logo} alt={company.displayName} className="h-12 w-12 rounded" />
+                <img src={company.logo} alt={company.displayName} className="h-8 w-8 sm:h-12 sm:w-12 rounded flex-shrink-0" />
               )}
-              <div>
-                <h1 className="text-2xl font-bold">{company.displayName}</h1>
-                <p className="text-muted-foreground">Gift Card Marketplace</p>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-lg sm:text-2xl font-bold truncate">{company.displayName}</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground">Gift Card Marketplace</p>
               </div>
             </div>
             <CartSheet />
@@ -118,10 +118,10 @@ function MarketplaceHomeContent() {
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold mb-2">Available Gift Cards</h2>
-          <p className="text-muted-foreground">
+      <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
+        <div className="mb-6 sm:mb-8">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">Available Gift Cards</h2>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Browse our collection of digital gift cards with instant delivery
           </p>
         </div>
@@ -137,7 +137,7 @@ function MarketplaceHomeContent() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {listings.map((listing) => (
               <Link href={`/marketplace/${companySlug}/${listing.id}`} key={listing.id}>
                 <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
@@ -156,13 +156,13 @@ function MarketplaceHomeContent() {
                       </div>
                     )}
                   </CardHeader>
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <CardTitle className="text-lg mb-1">{listing.title}</CardTitle>
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant="outline">{listing.brand}</Badge>
-                          <Badge variant="outline">
+                  <CardContent className="p-3 sm:p-6">
+                    <div className="flex items-start justify-between mb-2 sm:mb-3">
+                      <div className="min-w-0 flex-1">
+                        <CardTitle className="text-base sm:text-lg mb-1 truncate">{listing.title}</CardTitle>
+                        <div className="flex items-center gap-1 sm:gap-2 mb-2 flex-wrap">
+                          <Badge variant="outline" className="text-xs">{listing.brand}</Badge>
+                          <Badge variant="outline" className="text-xs">
                             {listing.cardType === "digital" ? "Digital" : "Physical"}
                           </Badge>
                         </div>
@@ -171,18 +171,18 @@ function MarketplaceHomeContent() {
                         <img
                           src={listing.brandLogoUrl}
                           alt={listing.brand}
-                          className="h-8 w-8 object-contain"
+                          className="h-6 w-6 sm:h-8 sm:w-8 object-contain ml-2 flex-shrink-0"
                         />
                       )}
                     </div>
 
                     {listing.description && (
-                      <CardDescription className="mb-4 line-clamp-2">
+                      <CardDescription className="mb-3 sm:mb-4 line-clamp-2 text-xs sm:text-sm">
                         {listing.description}
                       </CardDescription>
                     )}
 
-                    <div className="space-y-3">
+                    <div className="space-y-2 sm:space-y-3">
                       {listing.discountPercentage > 0 && (
                         <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
                           <Tag className="h-4 w-4" />
@@ -193,24 +193,24 @@ function MarketplaceHomeContent() {
                       )}
 
                       <div>
-                        <p className="text-xs text-muted-foreground mb-2">Available denominations:</p>
-                        <div className="flex flex-wrap gap-2">
+                        <p className="text-xs text-muted-foreground mb-1 sm:mb-2">Available denominations:</p>
+                        <div className="flex flex-wrap gap-1 sm:gap-2">
                           {listing.denominations.slice(0, 4).map((denom) => (
-                            <Badge key={denom} variant="secondary">
+                            <Badge key={denom} variant="secondary" className="text-xs">
                               {listing.currency} {denom}
                             </Badge>
                           ))}
                           {listing.denominations.length > 4 && (
-                            <Badge variant="secondary">
+                            <Badge variant="secondary" className="text-xs">
                               +{listing.denominations.length - 4} more
                             </Badge>
                           )}
                         </div>
                       </div>
 
-                      <Button className="w-full mt-4">
-                        <ShoppingCart className="mr-2 h-4 w-4" />
-                        View Details
+                      <Button className="w-full mt-3 sm:mt-4" size="sm">
+                        <ShoppingCart className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                        <span className="text-xs sm:text-sm">View Details</span>
                       </Button>
                     </div>
                   </CardContent>

@@ -85,17 +85,17 @@ export default async function DashboardLayout({
     <div className="min-h-screen flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center px-4">
-          <div className="mr-4 flex">
-            <Link href="/dashboard" className="mr-6 flex items-center space-x-2">
-              <span className="font-bold text-xl">GiftCard Market</span>
+        <div className="container flex h-14 items-center px-2 sm:px-4">
+          <div className="mr-2 sm:mr-4 flex">
+            <Link href="/dashboard" className="mr-2 sm:mr-6 flex items-center space-x-2">
+              <span className="font-bold text-base sm:text-xl">GiftCard Market</span>
             </Link>
           </div>
 
-          <div className="flex-1 flex items-center justify-between space-x-4">
+          <div className="flex-1 flex items-center justify-between space-x-2 sm:space-x-4">
             <CompanySwitcher />
 
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
               <UserMenu user={session.user} />
             </div>
           </div>
@@ -109,7 +109,7 @@ export default async function DashboardLayout({
 
       {/* Footer */}
       <footer className="border-t py-4">
-        <div className="container px-4 text-center text-sm text-muted-foreground">
+        <div className="container px-2 sm:px-4 text-center text-xs sm:text-sm text-muted-foreground">
           © {new Date().getFullYear()} GiftCard Marketplace. All rights reserved.
         </div>
       </footer>

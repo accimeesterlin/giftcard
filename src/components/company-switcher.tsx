@@ -100,18 +100,19 @@ export function CompanySwitcher({ currentCompany }: CompanySwitcherProps) {
 
   if (isLoading) {
     return (
-      <Button variant="outline" disabled className="w-[200px]">
+      <Button variant="outline" disabled className="w-full sm:w-[200px]">
         <Building2 className="mr-2 h-4 w-4" />
-        Loading...
+        <span className="hidden sm:inline">Loading...</span>
       </Button>
     );
   }
 
   if (companies.length === 0) {
     return (
-      <Button variant="outline" onClick={handleCreateCompany} className="w-[200px]">
+      <Button variant="outline" onClick={handleCreateCompany} className="w-full sm:w-[200px]">
         <PlusCircle className="mr-2 h-4 w-4" />
-        Create Company
+        <span className="hidden sm:inline">Create Company</span>
+        <span className="sm:hidden">Create</span>
       </Button>
     );
   }
@@ -132,11 +133,11 @@ export function CompanySwitcher({ currentCompany }: CompanySwitcherProps) {
           <Button
             variant="outline"
             role="combobox"
-            className="w-[200px] justify-between"
+            className="w-full sm:w-[200px] justify-between"
           >
             {selectedCompany ? (
-              <div className="flex items-center gap-2">
-                <Avatar className="h-5 w-5">
+              <div className="flex items-center gap-2 min-w-0">
+                <Avatar className="h-5 w-5 flex-shrink-0">
                   <AvatarImage src={selectedCompany.logo || undefined} />
                   <AvatarFallback className="text-xs">
                     {getInitials(selectedCompany.displayName)}
@@ -150,7 +151,7 @@ export function CompanySwitcher({ currentCompany }: CompanySwitcherProps) {
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-[200px]" align="start">
+        <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-[200px]" align="start">
           <DropdownMenuLabel>Your Companies</DropdownMenuLabel>
           <DropdownMenuSeparator />
           {companies.map((company) => (

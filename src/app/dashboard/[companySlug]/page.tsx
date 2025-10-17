@@ -125,16 +125,16 @@ export default function DashboardOverview() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground mt-2">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h1>
+        <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
           Welcome back to {company.displayName}
         </p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
@@ -188,39 +188,39 @@ export default function DashboardOverview() {
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
         {/* Recent Orders */}
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
+          <CardHeader className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div>
-                <CardTitle>Recent Orders</CardTitle>
-                <CardDescription>Your latest transactions</CardDescription>
+                <CardTitle className="text-base sm:text-lg">Recent Orders</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Your latest transactions</CardDescription>
               </div>
               <Link href={`/dashboard/${companySlug}/orders`}>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" className="w-full sm:w-auto">
                   View All
                 </Button>
               </Link>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6 pt-0">
             {orders.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                <p className="text-sm">No orders yet</p>
+              <div className="text-center py-6 sm:py-8 text-muted-foreground">
+                <ShoppingCart className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 sm:mb-4 text-muted-foreground/50" />
+                <p className="text-xs sm:text-sm">No orders yet</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {orders.map((order) => (
-                  <div key={order.id} className="flex items-center justify-between border-b pb-4 last:border-0">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{order.customerEmail}</p>
+                  <div key={order.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b pb-3 sm:pb-4 last:border-0">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs sm:text-sm font-medium truncate">{order.customerEmail}</p>
                       <p className="text-xs text-muted-foreground">
                         {format(new Date(order.createdAt), "MMM d, yyyy 'at' h:mm a")}
                       </p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3">
                       <span className="text-sm font-medium">
                         ${order.total.toFixed(2)}
                       </span>

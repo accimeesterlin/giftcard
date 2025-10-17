@@ -101,10 +101,10 @@ export default function PaymentSuccessPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center px-3">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">Verifying your payment...</p>
+          <Loader2 className="h-10 w-10 sm:h-12 sm:w-12 animate-spin text-muted-foreground mx-auto mb-3 sm:mb-4" />
+          <p className="text-sm sm:text-base text-muted-foreground">Verifying your payment...</p>
         </div>
       </div>
     );
@@ -114,86 +114,86 @@ export default function PaymentSuccessPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
+        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
+          <div className="flex items-center gap-2 sm:gap-3">
             {company?.logo && (
-              <img src={company.logo} alt={company.displayName} className="h-10 w-10 rounded" />
+              <img src={company.logo} alt={company.displayName} className="h-8 w-8 sm:h-10 sm:w-10 rounded flex-shrink-0" />
             )}
-            <div>
-              <h2 className="font-semibold">{company?.displayName || "Gift Card Marketplace"}</h2>
-              <p className="text-sm text-muted-foreground">Payment Confirmation</p>
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-base font-semibold truncate">{company?.displayName || "Gift Card Marketplace"}</h2>
+              <p className="text-xs sm:text-sm text-muted-foreground">Payment Confirmation</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-16 max-w-2xl">
+      <div className="container mx-auto px-3 sm:px-4 py-8 sm:py-16 max-w-2xl">
         <Card>
-          <CardHeader className="text-center">
+          <CardHeader className="text-center p-4 sm:p-6">
             {verificationStatus === "success" ? (
               <>
-                <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20">
-                  <CheckCircle className="h-12 w-12 text-green-600 dark:text-green-400" />
+                <div className="mx-auto mb-3 sm:mb-4 flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20">
+                  <CheckCircle className="h-10 w-10 sm:h-12 sm:w-12 text-green-600 dark:text-green-400" />
                 </div>
-                <CardTitle className="text-2xl">Payment Successful!</CardTitle>
-                <CardDescription className="text-base mt-2">
+                <CardTitle className="text-xl sm:text-2xl">Payment Successful!</CardTitle>
+                <CardDescription className="text-sm sm:text-base mt-1.5 sm:mt-2">
                   Your order has been confirmed and is being processed.
                 </CardDescription>
               </>
             ) : (
               <>
-                <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
-                  <XCircle className="h-12 w-12 text-red-600 dark:text-red-400" />
+                <div className="mx-auto mb-3 sm:mb-4 flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
+                  <XCircle className="h-10 w-10 sm:h-12 sm:w-12 text-red-600 dark:text-red-400" />
                 </div>
-                <CardTitle className="text-2xl">Payment Verification Failed</CardTitle>
-                <CardDescription className="text-base mt-2">
+                <CardTitle className="text-xl sm:text-2xl">Payment Verification Failed</CardTitle>
+                <CardDescription className="text-sm sm:text-base mt-1.5 sm:mt-2">
                   {errorMessage || "We couldn't verify your payment. Please contact support."}
                 </CardDescription>
               </>
             )}
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6 pt-0">
             {orderId && (
-              <div className="bg-muted p-4 rounded-lg">
-                <p className="text-sm text-muted-foreground mb-1">Order ID</p>
-                <p className="font-mono font-semibold">{orderId}</p>
+              <div className="bg-muted p-3 sm:p-4 rounded-lg">
+                <p className="text-xs sm:text-sm text-muted-foreground mb-1">Order ID</p>
+                <p className="text-sm sm:text-base font-mono font-semibold break-all">{orderId}</p>
               </div>
             )}
 
             {verificationStatus === "success" && (
-              <div className="space-y-3 text-sm text-muted-foreground">
+              <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm text-muted-foreground">
                 <div className="flex items-start gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 mt-0.5 flex-shrink-0" />
                   <p>Your gift card codes will be sent to your email shortly</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 mt-0.5 flex-shrink-0" />
                   <p>Please check your spam folder if you don't receive the email within 10 minutes</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 mt-0.5 flex-shrink-0" />
                   <p>A receipt has been sent to your email address</p>
                 </div>
               </div>
             )}
 
-            <div className="flex flex-col gap-3 pt-4">
+            <div className="flex flex-col gap-2 sm:gap-3 pt-3 sm:pt-4">
               <Link href={`/marketplace/${companySlug}`}>
-                <Button className="w-full" size="lg">
+                <Button className="w-full h-10 sm:h-11 text-sm sm:text-base">
                   Continue Shopping
                 </Button>
               </Link>
               {verificationStatus === "error" && (
                 <Link href={`/marketplace/${companySlug}/support`}>
-                  <Button variant="outline" className="w-full" size="lg">
+                  <Button variant="outline" className="w-full h-10 sm:h-11 text-sm sm:text-base">
                     Contact Support
                   </Button>
                 </Link>
               )}
               <Link href="/">
-                <Button variant="ghost" className="w-full">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
+                <Button variant="ghost" className="w-full h-10 sm:h-11 text-sm sm:text-base">
+                  <ArrowLeft className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                   Back to Home
                 </Button>
               </Link>

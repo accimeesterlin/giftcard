@@ -61,30 +61,30 @@ export default function SigninForm() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 py-12">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-3 sm:px-4 py-6 sm:py-12">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
-          <CardDescription>
+        <CardHeader className="space-y-1 p-4 sm:p-6">
+          <CardTitle className="text-xl sm:text-2xl font-bold">Welcome back</CardTitle>
+          <CardDescription className="text-sm sm:text-base">
             Enter your credentials to access your dashboard
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0">
             {registered && (
-              <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-sm p-3 rounded-md">
+              <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs sm:text-sm p-2.5 sm:p-3 rounded-md">
                 Account created successfully! Please sign in.
               </div>
             )}
 
             {error && (
-              <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md">
+              <div className="bg-destructive/15 text-destructive text-xs sm:text-sm p-2.5 sm:p-3 rounded-md">
                 {error}
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="email" className="text-sm">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -92,15 +92,16 @@ export default function SigninForm() {
                 {...register("email")}
                 disabled={isLoading}
                 autoComplete="email"
+                className="h-9 sm:h-10 text-sm"
               />
               {errors.email && (
-                <p className="text-sm text-destructive">{errors.email.message}</p>
+                <p className="text-xs sm:text-sm text-destructive">{errors.email.message}</p>
               )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5 sm:space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-sm">Password</Label>
                 <Link
                   href="/auth/forgot-password"
                   className="text-xs text-primary hover:underline"
@@ -115,17 +116,18 @@ export default function SigninForm() {
                 {...register("password")}
                 disabled={isLoading}
                 autoComplete="current-password"
+                className="h-9 sm:h-10 text-sm"
               />
               {errors.password && (
-                <p className="text-sm text-destructive">{errors.password.message}</p>
+                <p className="text-xs sm:text-sm text-destructive">{errors.password.message}</p>
               )}
             </div>
           </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={isLoading}>
+          <CardFooter className="flex flex-col space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0">
+            <Button type="submit" className="w-full h-9 sm:h-10 text-sm sm:text-base" disabled={isLoading}>
               {isLoading ? "Signing in..." : "Sign in"}
             </Button>
-            <p className="text-sm text-center text-muted-foreground">
+            <p className="text-xs sm:text-sm text-center text-muted-foreground">
               Don't have an account?{" "}
               <Link href="/auth/signup" className="text-primary hover:underline">
                 Sign up

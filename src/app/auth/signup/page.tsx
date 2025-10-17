@@ -72,102 +72,107 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 py-12">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-3 sm:px-4 py-6 sm:py-12">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
-          <CardDescription>
+        <CardHeader className="space-y-1 p-4 sm:p-6">
+          <CardTitle className="text-xl sm:text-2xl font-bold">Create an account</CardTitle>
+          <CardDescription className="text-sm sm:text-base">
             Enter your information to create your account and company
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0">
             {error && (
-              <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md">
+              <div className="bg-destructive/15 text-destructive text-xs sm:text-sm p-2.5 sm:p-3 rounded-md">
                 {error}
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="name" className="text-sm">Full Name</Label>
               <Input
                 id="name"
                 type="text"
                 placeholder="John Doe"
                 {...register("name")}
                 disabled={isLoading}
+                className="h-9 sm:h-10 text-sm"
               />
               {errors.name && (
-                <p className="text-sm text-destructive">{errors.name.message}</p>
+                <p className="text-xs sm:text-sm text-destructive">{errors.name.message}</p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="email" className="text-sm">Email</Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="john@example.com"
                 {...register("email")}
                 disabled={isLoading}
+                className="h-9 sm:h-10 text-sm"
               />
               {errors.email && (
-                <p className="text-sm text-destructive">{errors.email.message}</p>
+                <p className="text-xs sm:text-sm text-destructive">{errors.email.message}</p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="password" className="text-sm">Password</Label>
               <Input
                 id="password"
                 type="password"
                 placeholder="••••••••"
                 {...register("password")}
                 disabled={isLoading}
+                className="h-9 sm:h-10 text-sm"
               />
               {errors.password && (
-                <p className="text-sm text-destructive">{errors.password.message}</p>
+                <p className="text-xs sm:text-sm text-destructive">{errors.password.message}</p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="confirmPassword" className="text-sm">Confirm Password</Label>
               <Input
                 id="confirmPassword"
                 type="password"
                 placeholder="••••••••"
                 {...register("confirmPassword")}
                 disabled={isLoading}
+                className="h-9 sm:h-10 text-sm"
               />
               {errors.confirmPassword && (
-                <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
+                <p className="text-xs sm:text-sm text-destructive">{errors.confirmPassword.message}</p>
               )}
             </div>
 
-            <div className="border-t pt-4">
-              <div className="space-y-2">
-                <Label htmlFor="companyName">Company Name</Label>
+            <div className="border-t pt-3 sm:pt-4">
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label htmlFor="companyName" className="text-sm">Company Name</Label>
                 <Input
                   id="companyName"
                   type="text"
                   placeholder="Acme Gift Cards"
                   {...register("companyName")}
                   disabled={isLoading}
+                  className="h-9 sm:h-10 text-sm"
                 />
                 {errors.companyName && (
-                  <p className="text-sm text-destructive">{errors.companyName.message}</p>
+                  <p className="text-xs sm:text-sm text-destructive">{errors.companyName.message}</p>
                 )}
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[10px] sm:text-xs text-muted-foreground">
                   Your first company will be created automatically
                 </p>
               </div>
             </div>
           </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={isLoading}>
+          <CardFooter className="flex flex-col space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0">
+            <Button type="submit" className="w-full h-9 sm:h-10 text-sm sm:text-base" disabled={isLoading}>
               {isLoading ? "Creating account..." : "Create account"}
             </Button>
-            <p className="text-sm text-center text-muted-foreground">
+            <p className="text-xs sm:text-sm text-center text-muted-foreground">
               Already have an account?{" "}
               <Link href="/auth/signin" className="text-primary hover:underline">
                 Sign in

@@ -20,6 +20,7 @@ import {
   Code,
   ChevronDown,
   ChevronRight,
+  Plug,
 } from "lucide-react";
 
 interface NavItem {
@@ -71,6 +72,11 @@ export function DashboardSidebar() {
       title: "Payments",
       href: `/dashboard/${companySlug}/payments`,
       icon: CreditCard,
+    },
+    {
+      title: "Integrations",
+      href: `/dashboard/${companySlug}/integrations`,
+      icon: Plug,
     },
     {
       title: "Team",
@@ -153,8 +159,8 @@ export function DashboardSidebar() {
   };
 
   return (
-    <aside className="w-64 border-r bg-muted/40 min-h-[calc(100vh-3.5rem)]">
-      <nav className="flex flex-col gap-1 p-4">
+    <aside className="hidden lg:block w-64 border-r bg-muted/40 min-h-[calc(100vh-3.5rem)] sticky top-14">
+      <nav className="flex flex-col gap-1 p-4 h-[calc(100vh-3.5rem)] overflow-y-auto">
         {/* Main Navigation */}
         {mainNavigation.map((item) => renderNavItem(item))}
 
