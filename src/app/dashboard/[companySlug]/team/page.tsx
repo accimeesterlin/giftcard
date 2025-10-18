@@ -54,6 +54,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Loader2, UserPlus, MoreHorizontal, Mail, Trash2, Shield, RefreshCw, X, Clock } from "lucide-react";
 import { format } from "date-fns";
+import { useCurrentMembership } from "@/hooks/use-current-membership";
 
 const inviteSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -91,6 +92,9 @@ export default function TeamManagementPage() {
   const [isRevokeDialogOpen, setIsRevokeDialogOpen] = useState(false);
   const [memberToRevoke, setMemberToRevoke] = useState<Member | null>(null);
   const [isResending, setIsResending] = useState<string | null>(null);
+
+  // Get current user's membership to check permissions
+  const { hasRole } = useCurrentMembership(company?.id || null);
 
   const {
     register,
@@ -299,13 +303,14 @@ export default function TeamManagementPage() {
           </p>
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <UserPlus className="mr-2 h-4 w-4" />
-              Invite Member
-            </Button>
-          </DialogTrigger>
+        {hasRole("admin") && (
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Invite Member
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Invite Team Member</DialogTitle>
@@ -368,7 +373,8 @@ export default function TeamManagementPage() {
               </DialogFooter>
             </form>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        )}
       </div>
 
       {message && (
@@ -443,7 +449,7 @@ export default function TeamManagementPage() {
                         : format(new Date(member.invitedAt), "MMM d, yyyy")}
                     </TableCell>
                     <TableCell>
-                      {member.role !== "owner" && (
+                      {member.role !== "owner" && hasRole("admin") && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">

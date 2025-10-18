@@ -172,7 +172,7 @@ export default function AcceptInvitationClient() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-3 sm:p-4">
-      <Card className="w-full max-w-2xl">
+      <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-1.5 sm:space-y-2 p-4 sm:p-6">
           <div className="flex justify-center mb-3 sm:mb-4">
             <div className="p-3 sm:p-4 rounded-full bg-primary/10">

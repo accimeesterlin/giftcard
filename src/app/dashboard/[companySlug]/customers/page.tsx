@@ -28,6 +28,7 @@ import { UserCircle, Search, Loader2, ShoppingBag, DollarSign, Plus, Edit, Trash
 import { format } from "date-fns";
 import { CustomerFormDialog } from "@/components/customer-form-dialog";
 import { CustomerDetailSidebar } from "@/components/customer-detail-sidebar";
+import { useCurrentMembership } from "@/hooks/use-current-membership";
 
 interface Customer {
   id: string;
@@ -60,6 +61,9 @@ export default function CustomersPage() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Get current user's membership to check permissions
+  const { hasRole } = useCurrentMembership(company?.id || null);
 
   useEffect(() => {
     fetchCustomers();
@@ -158,10 +162,12 @@ export default function CustomersPage() {
             Manage and track your customer relationships
           </p>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)} variant="default">
-          <Plus className="mr-2 h-4 w-4" />
-          Add Customer
-        </Button>
+        {hasRole("agent") && (
+          <Button onClick={() => setIsDialogOpen(true)} variant="default">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Customer
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -285,28 +291,34 @@ export default function CustomersPage() {
                       {format(new Date(customer.createdAt), "MMM d, yyyy")}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditCustomer(customer);
-                          }}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteClick(customer);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
+                      {(hasRole("agent") || hasRole("admin")) && (
+                        <div className="flex items-center gap-2">
+                          {hasRole("agent") && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditCustomer(customer);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {hasRole("admin") && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteClick(customer);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

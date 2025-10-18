@@ -23,6 +23,8 @@ export default function SigninForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get("registered");
+  const callbackUrl = searchParams.get("callbackUrl");
+  const isFromInvitation = callbackUrl?.includes("/invitations/accept");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -50,8 +52,8 @@ export default function SigninForm() {
         return;
       }
 
-      // Successful login, redirect to dashboard
-      router.push("/dashboard");
+      // Successful login, redirect to callback URL or dashboard
+      router.push(callbackUrl || "/dashboard");
       router.refresh();
     } catch (err) {
       setError("An error occurred during sign in");
@@ -71,6 +73,20 @@ export default function SigninForm() {
         </CardHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
           <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0">
+            {isFromInvitation && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-100 text-xs sm:text-sm p-3 sm:p-4 rounded-md space-y-2">
+                <p className="font-semibold">Team Invitation</p>
+                <p>You've been invited to join a team. If you don't have an account yet, please{" "}
+                  <Link
+                    href={`/auth/signup?callbackUrl=${encodeURIComponent(callbackUrl)}`}
+                    className="font-semibold underline hover:text-blue-700 dark:hover:text-blue-300"
+                  >
+                    create an account here
+                  </Link>.
+                </p>
+              </div>
+            )}
+
             {registered && (
               <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs sm:text-sm p-2.5 sm:p-3 rounded-md">
                 Account created successfully! Please sign in.
@@ -129,7 +145,10 @@ export default function SigninForm() {
             </Button>
             <p className="text-xs sm:text-sm text-center text-muted-foreground">
               Don't have an account?{" "}
-              <Link href="/auth/signup" className="text-primary hover:underline">
+              <Link
+                href={callbackUrl ? `/auth/signup?callbackUrl=${encodeURIComponent(callbackUrl)}` : "/auth/signup"}
+                className="text-primary hover:underline"
+              >
                 Sign up
               </Link>
             </p>

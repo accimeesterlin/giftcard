@@ -33,6 +33,7 @@ import { Loader2, Plus, MoreHorizontal, Edit, Trash2, Package, Eye, Search, Chev
 import { format } from "date-fns";
 import { ListingFormDialog } from "@/components/listing-form-dialog";
 import { InventoryUploadDialog } from "@/components/inventory-upload-dialog";
+import { useCurrentMembership } from "@/hooks/use-current-membership";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -73,6 +74,9 @@ export default function ListingsPage() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Get current user's membership to check permissions
+  const { hasRole } = useCurrentMembership(company?.id || null);
 
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState("");
@@ -298,10 +302,12 @@ export default function ListingsPage() {
           </p>
         </div>
 
-        <Button onClick={() => setIsCreateDialogOpen(true)} variant="default">
-          <Plus className="mr-2 h-4 w-4" />
-          Create Listing
-        </Button>
+        {hasRole("manager") && (
+          <Button onClick={() => setIsCreateDialogOpen(true)} variant="default">
+            <Plus className="mr-2 h-4 w-4" />
+            Create Listing
+          </Button>
+        )}
       </div>
 
       {message && (
@@ -451,21 +457,25 @@ export default function ListingsPage() {
                       </div>
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Select
-                        value={listing.status}
-                        onValueChange={(value) => handleQuickStatusChange(listing.id, value)}
-                        disabled={updatingStatusFor === listing.id}
-                      >
-                        <SelectTrigger className="w-[140px] h-8">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="draft">Draft</SelectItem>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="inactive">Inactive</SelectItem>
-                          <SelectItem value="out_of_stock">Out of Stock</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      {hasRole("manager") ? (
+                        <Select
+                          value={listing.status}
+                          onValueChange={(value) => handleQuickStatusChange(listing.id, value)}
+                          disabled={updatingStatusFor === listing.id}
+                        >
+                          <SelectTrigger className="w-[140px] h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="draft">Draft</SelectItem>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="inactive">Inactive</SelectItem>
+                            <SelectItem value="out_of_stock">Out of Stock</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <div className="w-[140px]">{getStatusBadge(listing.status)}</div>
+                      )}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {format(new Date(listing.createdAt), "MMM d, yyyy")}
@@ -488,14 +498,18 @@ export default function ListingsPage() {
                             <Eye className="mr-2 h-4 w-4" />
                             View Details
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEditListing(listing)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit Listing
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleManageInventory(listing)}>
-                            <Package className="mr-2 h-4 w-4" />
-                            Manage Inventory
-                          </DropdownMenuItem>
+                          {hasRole("manager") && (
+                            <>
+                              <DropdownMenuItem onClick={() => handleEditListing(listing)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit Listing
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleManageInventory(listing)}>
+                                <Package className="mr-2 h-4 w-4" />
+                                Manage Inventory
+                              </DropdownMenuItem>
+                            </>
+                          )}
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => copyPreviewLink(listing.id)}>
                             <Copy className="mr-2 h-4 w-4" />
@@ -505,14 +519,18 @@ export default function ListingsPage() {
                             <ExternalLink className="mr-2 h-4 w-4" />
                             View as Buyer
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => openDeleteDialog(listing.id)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Listing
-                          </DropdownMenuItem>
+                          {hasRole("admin") && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => openDeleteDialog(listing.id)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Listing
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

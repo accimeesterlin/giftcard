@@ -43,6 +43,7 @@ import { format } from "date-fns";
 import { ListingFormDialog } from "@/components/listing-form-dialog";
 import { InventoryUploadDialog } from "@/components/inventory-upload-dialog";
 import { CodeManagementDialog } from "@/components/code-management-dialog";
+import { useCurrentMembership } from "@/hooks/use-current-membership";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -128,6 +129,9 @@ export default function ListingDetailPage() {
   const [inventorySummary, setInventorySummary] = useState<InventorySummary[]>([]);
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+  // Get current user's membership to check permissions
+  const { hasRole } = useCurrentMembership(company?.id || null);
 
   // Dialog states
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -350,27 +354,33 @@ export default function ListingDetailPage() {
           </div>
 
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setIsInventoryDialogOpen(true)}
-            >
-              <Package className="mr-2 h-4 w-4" />
-              Manage Inventory
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setIsEditDialogOpen(true)}
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => setIsDeleteDialogOpen(true)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </Button>
+            {hasRole("manager") && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsInventoryDialogOpen(true)}
+                >
+                  <Package className="mr-2 h-4 w-4" />
+                  Manage Inventory
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditDialogOpen(true)}
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </Button>
+              </>
+            )}
+            {hasRole("admin") && (
+              <Button
+                variant="destructive"
+                onClick={() => setIsDeleteDialogOpen(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </Button>
+            )}
           </div>
         </div>
 
@@ -380,21 +390,25 @@ export default function ListingDetailPage() {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">Status:</span>
-                <Select
-                  value={listing.status}
-                  onValueChange={handleStatusChange}
-                  disabled={isUpdatingStatus}
-                >
-                  <SelectTrigger className="w-[150px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    <SelectItem value="out_of_stock">Out of Stock</SelectItem>
-                  </SelectContent>
-                </Select>
+                {hasRole("manager") ? (
+                  <Select
+                    value={listing.status}
+                    onValueChange={handleStatusChange}
+                    disabled={isUpdatingStatus}
+                  >
+                    <SelectTrigger className="w-[150px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="out_of_stock">Out of Stock</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  getStatusBadge(listing.status)
+                )}
               </div>
             </div>
 
@@ -631,14 +645,16 @@ export default function ListingDetailPage() {
               <CardTitle>Inventory by Denomination</CardTitle>
               <CardDescription>Available codes for each denomination</CardDescription>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsInventoryDialogOpen(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Codes
-            </Button>
+            {hasRole("manager") && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsInventoryDialogOpen(true)}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Codes
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -646,15 +662,17 @@ export default function ListingDetailPage() {
             <div className="text-center py-8 text-muted-foreground">
               <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
               <p>No inventory codes added yet</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsInventoryDialogOpen(true)}
-                className="mt-4"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Add Your First Codes
-              </Button>
+              {hasRole("manager") && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsInventoryDialogOpen(true)}
+                  className="mt-4"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Your First Codes
+                </Button>
+              )}
             </div>
           ) : (
             <Table>
@@ -697,14 +715,16 @@ export default function ListingDetailPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openCodeManagement(item.denomination)}
-                      >
-                        <Edit className="mr-2 h-4 w-4" />
-                        Manage
-                      </Button>
+                      {hasRole("manager") && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openCodeManagement(item.denomination)}
+                        >
+                          <Edit className="mr-2 h-4 w-4" />
+                          Manage
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

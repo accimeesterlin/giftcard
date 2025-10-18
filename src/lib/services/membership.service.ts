@@ -132,6 +132,7 @@ export class MembershipService {
     const invitationUrl = `${process.env.NEXTAUTH_URL}/invitations/accept?token=${invitationToken}`;
 
     await EmailService.sendTeamInvitation({
+      companyId,
       to: email,
       inviterName: inviter?.name || "A team member",
       companyName: company.displayName,
