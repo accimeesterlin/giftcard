@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCart } from "@/contexts/CartContext";
 import {
   Sheet,
@@ -13,11 +13,51 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, Trash2, Plus, Minus } from "lucide-react";
+import { ShoppingCart, Trash2, Plus, Minus, AlertCircle } from "lucide-react";
+
+interface InventoryData {
+  [key: string]: {
+    [denomination: number]: number; // available quantity
+  };
+}
 
 export function CartSheet() {
   const { items, removeItem, updateQuantity, getTotalItems, getTotalPrice, clearCart } = useCart();
   const [isOpen, setIsOpen] = useState(false);
+  const [inventory, setInventory] = useState<InventoryData>({});
+
+  // Fetch inventory availability for cart items
+  useEffect(() => {
+    const fetchInventory = async () => {
+      const inventoryData: InventoryData = {};
+
+      // Fetch inventory for each unique listing
+      const uniqueListings = [...new Set(items.map((item) => ({ listingId: item.listingId, companySlug: item.companySlug })))];
+
+      await Promise.all(
+        uniqueListings.map(async ({ listingId, companySlug }) => {
+          try {
+            const response = await fetch(`/api/v1/marketplace/${companySlug}/${listingId}/inventory`);
+            if (response.ok) {
+              const data = await response.json();
+              inventoryData[listingId] = {};
+              data.data.forEach((item: { denomination: number; available: number }) => {
+                inventoryData[listingId][item.denomination] = item.available;
+              });
+            }
+          } catch (error) {
+            console.error(`Failed to fetch inventory for ${listingId}:`, error);
+          }
+        })
+      );
+
+      setInventory(inventoryData);
+    };
+
+    if (items.length > 0 && isOpen) {
+      fetchInventory();
+    }
+  }, [items, isOpen]);
 
   const calculateItemPrice = (item: typeof items[0]) => {
     const basePrice = item.denomination * item.quantity;
@@ -25,6 +65,10 @@ export function CartSheet() {
     const priceAfterDiscount = basePrice - discount;
     const sellerFee = priceAfterDiscount * (item.sellerFeePercentage / 100);
     return priceAfterDiscount + sellerFee;
+  };
+
+  const getAvailableQuantity = (listingId: string, denomination: number): number => {
+    return inventory[listingId]?.[denomination] ?? 100; // Default to 100 if not loaded
   };
 
   return (
@@ -80,11 +124,36 @@ export function CartSheet() {
                       <p className="text-sm font-medium mt-1">
                         {item.currency} {item.denomination}
                       </p>
-                      {item.discountPercentage > 0 && (
-                        <Badge variant="secondary" className="text-xs mt-1">
-                          {item.discountPercentage}% off
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-1 flex-wrap mt-1">
+                        {item.discountPercentage > 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            {item.discountPercentage}% off
+                          </Badge>
+                        )}
+                        {(() => {
+                          const available = getAvailableQuantity(item.listingId, item.denomination);
+                          if (available === 0) {
+                            return (
+                              <Badge variant="destructive" className="text-xs">
+                                Out of stock
+                              </Badge>
+                            );
+                          } else if (item.quantity >= available) {
+                            return (
+                              <Badge variant="outline" className="text-xs">
+                                Max quantity
+                              </Badge>
+                            );
+                          } else if (available < 5) {
+                            return (
+                              <Badge variant="outline" className="text-xs text-yellow-600">
+                                Only {available} left
+                              </Badge>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
                       <div className="flex items-center gap-2 mt-2">
                         <Button
                           variant="outline"
@@ -101,6 +170,7 @@ export function CartSheet() {
                           variant="outline"
                           size="icon"
                           className="h-6 w-6"
+                          disabled={item.quantity >= getAvailableQuantity(item.listingId, item.denomination)}
                           onClick={() =>
                             updateQuantity(item.listingId, item.denomination, item.quantity + 1)
                           }

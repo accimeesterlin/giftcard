@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GiftCard Marketplace - Multi-Tenant Platform",
+  title: "sellergift - Multi-Tenant Platform",
   description: "Seller-centric gift card marketplace with multi-tenant support",
 };
 

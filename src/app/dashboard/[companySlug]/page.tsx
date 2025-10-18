@@ -213,20 +213,22 @@ export default function DashboardOverview() {
             ) : (
               <div className="space-y-3 sm:space-y-4">
                 {orders.map((order) => (
-                  <div key={order.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b pb-3 sm:pb-4 last:border-0">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs sm:text-sm font-medium truncate">{order.customerEmail}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(order.createdAt), "MMM d, yyyy 'at' h:mm a")}
-                      </p>
+                  <Link key={order.id} href={`/dashboard/${companySlug}/orders/${order.id}`}>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b pb-3 sm:pb-4 last:border-0 hover:bg-muted/50 transition-colors cursor-pointer rounded-lg p-2 -m-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs sm:text-sm font-medium truncate">{order.customerEmail}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(order.createdAt), "MMM d, yyyy 'at' h:mm a")}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3">
+                        <span className="text-sm font-medium">
+                          ${order.total.toFixed(2)}
+                        </span>
+                        {getStatusBadge(order.paymentStatus)}
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3">
-                      <span className="text-sm font-medium">
-                        ${order.total.toFixed(2)}
-                      </span>
-                      {getStatusBadge(order.paymentStatus)}
-                    </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}

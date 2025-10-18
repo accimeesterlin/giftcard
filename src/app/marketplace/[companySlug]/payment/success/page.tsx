@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle, Loader2, XCircle, ArrowLeft, Copy, Eye, EyeOff, Mail, ShoppingBag, CreditCard } from "lucide-react";
+import { CheckCircle, Loader2, XCircle, ArrowLeft, Copy, Eye, EyeOff, Mail, ShoppingBag, CreditCard, Star } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 
@@ -54,6 +54,7 @@ export default function PaymentSuccessPage() {
   const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
   const [showCodes, setShowCodes] = useState<{ [key: number]: boolean }>({});
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [reviewToken, setReviewToken] = useState<string | null>(null);
 
   const orderId = searchParams.get("orderId");
   const token = searchParams.get("token");
@@ -184,7 +185,7 @@ export default function PaymentSuccessPage() {
               <img src={company.logo} alt={company.displayName} className="h-8 w-8 sm:h-10 sm:w-10 rounded flex-shrink-0" />
             )}
             <div className="min-w-0">
-              <h2 className="text-sm sm:text-base font-semibold truncate">{company?.displayName || "Gift Card Marketplace"}</h2>
+              <h2 className="text-sm sm:text-base font-semibold truncate">{company?.displayName || "sellergift"}</h2>
               <p className="text-xs sm:text-sm text-muted-foreground">Payment Confirmation</p>
             </div>
           </div>
@@ -379,6 +380,25 @@ export default function PaymentSuccessPage() {
                       Save or screenshot these codes - they won't be displayed again for security
                     </p>
                   </div>
+                </div>
+
+                {/* Review Call-to-Action */}
+                <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border border-purple-200 dark:border-purple-800 p-4 sm:p-6 rounded-lg text-center space-y-3">
+                  <div className="flex justify-center gap-1 mb-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className="h-5 w-5 fill-yellow-400 text-yellow-400"
+                      />
+                    ))}
+                  </div>
+                  <h3 className="text-base sm:text-lg font-semibold">How was your experience?</h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    We've sent you an email with a link to leave a review. Your feedback helps others make informed decisions!
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Check your inbox at <strong>{orderDetails.customerEmail}</strong>
+                  </p>
                 </div>
               </>
             )}

@@ -17,7 +17,10 @@
       "Bash(curl http://localhost:3001/api/admin/drop-index)",
       "WebFetch(domain:docs.pgecom.com)",
       "Bash(node:*)",
-      "Bash(yarn build)"
+      "Bash(yarn build)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Bash(yarn dev)"
     ],
     "deny": [],
     "ask": []

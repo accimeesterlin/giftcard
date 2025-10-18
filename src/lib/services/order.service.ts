@@ -11,6 +11,7 @@ import Listing from "@/lib/db/models/Listing";
 import Inventory from "@/lib/db/models/Inventory";
 import CompanyMembership from "@/lib/db/models/CompanyMembership";
 import AuditLog from "@/lib/db/models/AuditLog";
+import Review from "@/lib/db/models/Review";
 import { EmailService } from "./email.service";
 import { StripeService } from "./payment/stripe.service";
 import { PayPalService } from "./payment/paypal.service";
@@ -354,8 +355,11 @@ export class OrderService {
       }
     );
 
-    // Send delivery email
-    await this.deliverOrder(order);
+    // Create review token for the customer (before sending email so we can include it)
+    const review = await this.createReviewToken(order);
+
+    // Send delivery email (includes review link)
+    await this.deliverOrder(order, review);
 
     // Create audit log
     await AuditLog.createLog({
@@ -374,10 +378,36 @@ export class OrderService {
   }
 
   /**
+   * Create a review token for an order
+   * Private helper method
+   */
+  private static async createReviewToken(order: any) {
+    // Check if review already exists for this order
+    const existingReview = await Review.findByOrder(order.id);
+    if (existingReview) {
+      console.log(`Review already exists for order ${order.id}`);
+      return existingReview;
+    }
+
+    // Create review with token
+    const review = await Review.create({
+      orderId: order.id,
+      listingId: order.listingId,
+      companyId: order.companyId,
+      customerEmail: order.customerEmail,
+      customerName: order.customerName,
+      // Token and expiry will be set by defaults in the model
+    });
+
+    console.log(`Created review token for order ${order.id}: ${review.reviewToken}`);
+    return review;
+  }
+
+  /**
    * Deliver order via email
    * Private helper method
    */
-  private static async deliverOrder(order: any) {
+  private static async deliverOrder(order: any, review: any = null) {
     console.log(`📦 deliverOrder called for order: ${order.id}, customer: ${order.customerEmail}`);
 
     if (!order.giftCardCodes || order.giftCardCodes.length === 0) {
@@ -459,6 +489,15 @@ export class OrderService {
             <p>${redemptionInstructions}</p>
 
             <p style="color: #dc2626; font-weight: 500;">⚠️ Important: Keep this email safe and do not share your code${order.quantity === 1 ? '' : 's'} with anyone you don't trust.</p>
+
+            ${review ? `
+            <div style="background: #eff6ff; border: 1px solid #3b82f6; border-radius: 8px; padding: 20px; margin: 24px 0; text-align: center;">
+              <h3 style="color: #1e40af; margin: 0 0 12px 0; font-size: 18px;">⭐ Rate Your Experience</h3>
+              <p style="margin: 0 0 16px 0; color: #1e3a8a;">We'd love to hear about your purchase! Share your feedback to help others make informed decisions.</p>
+              <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/reviews/${review.reviewToken}" style="display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">Leave a Review</a>
+              <p style="margin: 16px 0 0 0; font-size: 12px; color: #64748b;">This link is valid for 30 days and can only be used once.</p>
+            </div>
+            ` : ''}
 
             <div class="footer">
               <p>This is an automated email. Please keep this email for your records.</p>

@@ -7,6 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { CartProvider, useCart } from "@/contexts/CartContext";
 import { CartSheet } from "@/components/cart-sheet";
 import {
@@ -20,7 +28,10 @@ import {
   Info,
   CreditCard,
   Plus,
+  ChevronLeft,
+  Home,
 } from "lucide-react";
+import Link from "next/link";
 
 interface Listing {
   id: string;
@@ -82,12 +93,19 @@ function MarketplaceListingContent() {
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerFirstName, setCustomerFirstName] = useState("");
   const [customerLastName, setCustomerLastName] = useState("");
+  const [showCustomerInfoDialog, setShowCustomerInfoDialog] = useState(false);
 
   // Load saved customer info from localStorage on mount
   useEffect(() => {
     const savedEmail = localStorage.getItem("customerEmail");
     const savedFirstName = localStorage.getItem("customerFirstName");
     const savedLastName = localStorage.getItem("customerLastName");
+
+    console.log("[Customer Info] Loading from localStorage:", {
+      savedEmail,
+      savedFirstName,
+      savedLastName,
+    });
 
     if (savedEmail) setCustomerEmail(savedEmail);
     if (savedFirstName) setCustomerFirstName(savedFirstName);
@@ -96,9 +114,18 @@ function MarketplaceListingContent() {
 
   // Save customer info to localStorage when they change
   useEffect(() => {
-    if (customerEmail) localStorage.setItem("customerEmail", customerEmail);
-    if (customerFirstName) localStorage.setItem("customerFirstName", customerFirstName);
-    if (customerLastName) localStorage.setItem("customerLastName", customerLastName);
+    if (customerEmail) {
+      localStorage.setItem("customerEmail", customerEmail);
+      console.log("[Customer Info] Saved email to localStorage:", customerEmail);
+    }
+    if (customerFirstName) {
+      localStorage.setItem("customerFirstName", customerFirstName);
+      console.log("[Customer Info] Saved firstName to localStorage:", customerFirstName);
+    }
+    if (customerLastName) {
+      localStorage.setItem("customerLastName", customerLastName);
+      console.log("[Customer Info] Saved lastName to localStorage:", customerLastName);
+    }
   }, [customerEmail, customerFirstName, customerLastName]);
 
   useEffect(() => {
@@ -107,62 +134,58 @@ function MarketplaceListingContent() {
 
   const fetchData = async () => {
     try {
-      // Get company
-      const companiesResponse = await fetch("/api/v1/companies");
-      if (companiesResponse.ok) {
-        const companiesData = await companiesResponse.json();
-        const foundCompany = companiesData.data.find((c: any) => c.slug === companySlug);
+      // Get company (public endpoint)
+      const companyResponse = await fetch(`/api/v1/marketplace/${companySlug}`);
+      if (companyResponse.ok) {
+        const companyData = await companyResponse.json();
+        setCompany(companyData.data);
 
-        if (foundCompany) {
-          setCompany(foundCompany);
+        // Get listing (public endpoint)
+        const listingResponse = await fetch(
+          `/api/v1/marketplace/${companySlug}/${listingId}`
+        );
+        if (listingResponse.ok) {
+          const listingData = await listingResponse.json();
+          setListing(listingData.data);
 
-          // Get listing
-          const listingResponse = await fetch(
-            `/api/v1/companies/${foundCompany.id}/listings/${listingId}`
+          // Get inventory availability
+          const inventoryResponse = await fetch(
+            `/api/v1/marketplace/${companySlug}/${listingId}/inventory`
           );
-          if (listingResponse.ok) {
-            const listingData = await listingResponse.json();
-            setListing(listingData.data);
+          if (inventoryResponse.ok) {
+            const inventoryData = await inventoryResponse.json();
+            setInventory(inventoryData.data);
 
-            // Get inventory availability
-            const inventoryResponse = await fetch(
-              `/api/v1/marketplace/${companySlug}/${listingId}/inventory`
-            );
-            if (inventoryResponse.ok) {
-              const inventoryData = await inventoryResponse.json();
-              setInventory(inventoryData.data);
-
-              // Auto-select first available denomination
-              const firstAvailable = inventoryData.data.find((d: DenominationAvailability) => d.inStock);
-              if (firstAvailable) {
-                setSelectedDenomination(firstAvailable.denomination);
-              } else if (listingData.data.denominations.length > 0) {
-                // If no available denominations, select first one anyway
-                setSelectedDenomination(listingData.data.denominations[0]);
-              }
+            // Auto-select first available denomination
+            const firstAvailable = inventoryData.data.find((d: DenominationAvailability) => d.inStock);
+            if (firstAvailable) {
+              setSelectedDenomination(firstAvailable.denomination);
+            } else if (listingData.data.denominations.length > 0) {
+              // If no available denominations, select first one anyway
+              setSelectedDenomination(listingData.data.denominations[0]);
             }
           }
+        }
 
-          // Get payment providers (public endpoint)
-          console.log("[Marketplace Page] Fetching payment providers for:", companySlug);
-          const providersResponse = await fetch(
-            `/api/v1/marketplace/${companySlug}/payments`
-          );
-          console.log("[Marketplace Page] Providers response status:", providersResponse.status);
+        // Get payment providers (public endpoint)
+        console.log("[Marketplace Page] Fetching payment providers for:", companySlug);
+        const providersResponse = await fetch(
+          `/api/v1/marketplace/${companySlug}/payments`
+        );
+        console.log("[Marketplace Page] Providers response status:", providersResponse.status);
 
-          if (providersResponse.ok) {
-            const providersData = await providersResponse.json();
-            console.log("[Marketplace Page] Providers data:", providersData);
-            setPaymentProviders(providersData.data);
+        if (providersResponse.ok) {
+          const providersData = await providersResponse.json();
+          console.log("[Marketplace Page] Providers data:", providersData);
+          setPaymentProviders(providersData.data);
 
-            // Auto-select first available payment provider
-            if (providersData.data.length > 0) {
-              setSelectedPaymentProvider(providersData.data[0].provider);
-            }
-          } else {
-            const errorData = await providersResponse.json();
-            console.error("[Marketplace Page] Failed to fetch providers:", errorData);
+          // Auto-select first available payment provider
+          if (providersData.data.length > 0) {
+            setSelectedPaymentProvider(providersData.data[0].provider);
           }
+        } else {
+          const errorData = await providersResponse.json();
+          console.error("[Marketplace Page] Failed to fetch providers:", errorData);
         }
       }
     } catch (error) {
@@ -221,6 +244,11 @@ function MarketplaceListingContent() {
     alert("Added to cart!");
   };
 
+  const handleBuyNowClick = () => {
+    if (!selectedDenomination || !selectedPaymentProvider) return;
+    setShowCustomerInfoDialog(true);
+  };
+
   const handleBuyNow = async () => {
     if (!selectedDenomination || !selectedPaymentProvider) return;
 
@@ -231,6 +259,7 @@ function MarketplaceListingContent() {
     }
 
     setIsProcessingPayment(true);
+    setShowCustomerInfoDialog(false);
 
     try {
       const response = await fetch(
@@ -319,7 +348,7 @@ function MarketplaceListingContent() {
               )}
               <div className="min-w-0 flex-1">
                 <h2 className="font-semibold text-sm sm:text-base truncate">{company.displayName}</h2>
-                <p className="text-xs sm:text-sm text-muted-foreground">Gift Card Marketplace</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">sellergift</p>
               </div>
             </div>
             <CartSheet />
@@ -329,16 +358,28 @@ function MarketplaceListingContent() {
 
       {/* Main Content */}
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-6xl">
+        {/* Breadcrumb Navigation */}
+        <div className="mb-4">
+          <Link
+            href={`/marketplace/${companySlug}`}
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <Home className="h-3.5 w-3.5" />
+            <span>Back to Marketplace</span>
+          </Link>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
           {/* Left Column - Product Info */}
           <div className="space-y-4 sm:space-y-6">
             {/* Product Details */}
             <Card>
-              <CardHeader className="p-3 sm:p-6">
+              <CardHeader className="p-3 pb-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <CardTitle className="text-lg sm:text-2xl mb-2">{listing.title}</CardTitle>
-                    <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+                    <CardTitle className="text-lg mb-1 leading-none">{listing.title}</CardTitle>
+                    <div className="flex items-center gap-1 flex-wrap">
                       <Badge variant="outline" className="text-xs">{listing.brand}</Badge>
                       <Badge variant="outline" className="text-xs">
                         {listing.cardType === "digital" ? "Digital" : "Physical"}
@@ -349,25 +390,25 @@ function MarketplaceListingContent() {
                     <img
                       src={listing.brandLogoUrl}
                       alt={listing.brand}
-                      className="h-8 w-8 sm:h-12 sm:w-12 object-contain flex-shrink-0"
+                      className="h-8 w-8 object-contain flex-shrink-0"
                     />
                   )}
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3 sm:space-y-4 p-3 sm:p-6 pt-0">
+              <CardContent className="space-y-1.5 p-3 pt-1">
                 {listing.description && (
                   <div>
-                    <h3 className="text-sm sm:text-base font-semibold mb-2">Description</h3>
-                    <p className="text-xs sm:text-sm text-muted-foreground">{listing.description}</p>
+                    <h3 className="text-sm font-semibold mb-0.5 leading-none">Description</h3>
+                    <p className="text-xs text-muted-foreground leading-tight">{listing.description}</p>
                   </div>
                 )}
 
                 <div>
-                  <h3 className="text-sm sm:text-base font-semibold mb-2 flex items-center gap-2">
-                    <Globe className="h-4 w-4" />
+                  <h3 className="text-sm font-semibold mb-0.5 flex items-center gap-1.5 leading-none">
+                    <Globe className="h-3.5 w-3.5" />
                     Available In
                   </h3>
-                  <div className="flex flex-wrap gap-1 sm:gap-2">
+                  <div className="flex flex-wrap gap-1">
                     {listing.countries.map((country) => (
                       <Badge key={country} variant="secondary" className="text-xs">
                         {country}
@@ -377,8 +418,8 @@ function MarketplaceListingContent() {
                 </div>
 
                 {listing.totalStock > 0 && (
-                  <div className="flex items-center gap-2 text-xs sm:text-sm text-green-600 dark:text-green-400">
-                    <CheckCircle className="h-4 w-4" />
+                  <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
+                    <CheckCircle className="h-3.5 w-3.5" />
                     <span>In Stock - Ships Instantly</span>
                   </div>
                 )}
@@ -388,11 +429,11 @@ function MarketplaceListingContent() {
             {/* Terms & Conditions */}
             {listing.termsAndConditions && (
               <Card>
-                <CardHeader className="p-3 sm:p-6">
-                  <CardTitle className="text-sm sm:text-base">Terms & Conditions</CardTitle>
+                <CardHeader className="p-3 pb-2">
+                  <CardTitle className="text-sm leading-none">Terms & Conditions</CardTitle>
                 </CardHeader>
-                <CardContent className="p-3 sm:p-6 pt-0">
-                  <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                <CardContent className="p-3 pt-1">
+                  <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-tight">
                     {listing.termsAndConditions}
                   </p>
                 </CardContent>
@@ -403,16 +444,16 @@ function MarketplaceListingContent() {
           {/* Right Column - Purchase Card */}
           <div>
             <Card className="sticky top-4">
-              <CardHeader className="p-3 sm:p-6">
+              <CardHeader className="px-3 sm:px-6 pt-3 sm:pt-6 pb-1">
                 <CardTitle className="text-sm sm:text-base">Purchase Gift Card</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 sm:space-y-6 p-3 sm:p-6 pt-0">
+              <CardContent className="space-y-2.5 px-3 sm:px-6 pt-3 pb-3 sm:pb-6">
                 {/* Denomination Selection */}
                 <div>
-                  <label className="text-xs sm:text-sm font-medium mb-2 block">
+                  <label className="text-xs sm:text-sm font-medium mb-1.5 block">
                     Select Denomination
                   </label>
-                  <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {listing.denominations.map((denom) => {
                       const availability = inventory.find((inv) => inv.denomination === denom);
                       const inStock = availability?.inStock ?? false;
@@ -421,26 +462,26 @@ function MarketplaceListingContent() {
                       return (
                         <Button
                           key={denom}
-                          variant={selectedDenomination === denom ? "default" : "outline"}
+                          variant={selectedDenomination === denom ? "secondary" : "outline"}
                           onClick={() => inStock && setSelectedDenomination(denom)}
-                          className="h-auto py-1 sm:py-1.5 px-1.5 sm:px-2 relative"
+                          className="h-auto py-2.5 px-4"
                           disabled={!inStock}
                         >
-                          <div>
-                            <div className="text-sm sm:text-base font-bold">{listing.currency} {denom}</div>
+                          <div className="text-left">
+                            <div className="text-sm font-semibold whitespace-nowrap">{listing.currency} {denom}</div>
                             {inStock ? (
                               <>
                                 {listing.discountPercentage > 0 && (
-                                  <div className="text-[10px] sm:text-xs opacity-80">
+                                  <div className="text-[10px] opacity-75">
                                     Save {listing.discountPercentage}%
                                   </div>
                                 )}
-                                <div className="text-[10px] sm:text-xs opacity-60">
+                                <div className="text-[10px] opacity-65">
                                   {availableCount} available
                                 </div>
                               </>
                             ) : (
-                              <div className="text-[10px] sm:text-xs opacity-60">
+                              <div className="text-[10px] opacity-65">
                                 Out of Stock
                               </div>
                             )}
@@ -453,7 +494,7 @@ function MarketplaceListingContent() {
 
                 {/* Quantity */}
                 <div>
-                  <label className="text-xs sm:text-sm font-medium mb-2 block">
+                  <label className="text-xs sm:text-sm font-medium mb-1.5 block">
                     Quantity
                   </label>
                   {(() => {
@@ -496,7 +537,7 @@ function MarketplaceListingContent() {
                 </div>
 
                 {/* Price Summary */}
-                <div className="border-t pt-3 sm:pt-4 space-y-1.5 sm:space-y-2">
+                <div className="border-t pt-2.5 space-y-1">
                   <div className="flex justify-between text-xs sm:text-sm">
                     <span className="text-muted-foreground">Card Value</span>
                     <span>
@@ -521,73 +562,19 @@ function MarketplaceListingContent() {
                   </div>
                 </div>
 
-                {/* Customer Information */}
-                <div className="border-t pt-3 sm:pt-4">
-                  <h3 className="text-xs sm:text-sm font-medium mb-2 sm:mb-3">Customer Information</h3>
-                  <div className="space-y-2 sm:space-y-3">
-                    <div>
-                      <Label htmlFor="customerEmail" className="text-xs">
-                        Email Address <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        id="customerEmail"
-                        type="email"
-                        placeholder="your@email.com"
-                        value={customerEmail}
-                        onChange={(e) => setCustomerEmail(e.target.value)}
-                        required
-                        className="h-9 sm:h-10 text-sm"
-                      />
-                      <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
-                        We'll send your gift card to this email
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
-                      <div>
-                        <Label htmlFor="customerFirstName" className="text-xs">
-                          First Name <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                          id="customerFirstName"
-                          type="text"
-                          placeholder="John"
-                          value={customerFirstName}
-                          onChange={(e) => setCustomerFirstName(e.target.value)}
-                          required
-                          className="h-9 sm:h-10 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="customerLastName" className="text-xs">
-                          Last Name <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                          id="customerLastName"
-                          type="text"
-                          placeholder="Doe"
-                          value={customerLastName}
-                          onChange={(e) => setCustomerLastName(e.target.value)}
-                          required
-                          className="h-9 sm:h-10 text-sm"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
                 {/* Payment Method Selection */}
                 {paymentProviders.length > 0 && (
                   <div>
-                    <label className="text-xs sm:text-sm font-medium mb-2 block">
+                    <label className="text-xs sm:text-sm font-medium mb-1.5 block">
                       Payment Method
                     </label>
-                    <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
+                    <div className="flex flex-wrap gap-2">
                       {paymentProviders.map((provider) => (
                         <Button
                           key={provider.id}
-                          variant={selectedPaymentProvider === provider.provider ? "default" : "outline"}
+                          variant={selectedPaymentProvider === provider.provider ? "secondary" : "outline"}
                           onClick={() => setSelectedPaymentProvider(provider.provider)}
-                          className="h-auto py-2 sm:py-3 justify-start text-sm"
+                          className="h-auto py-2.5 px-4 justify-start text-sm"
                         >
                           <CreditCard className="mr-2 h-4 w-4" />
                           <span className="capitalize">{provider.provider}</span>
@@ -602,15 +589,15 @@ function MarketplaceListingContent() {
                   const availability = inventory.find((inv) => inv.denomination === selectedDenomination);
                   const inStock = availability?.inStock ?? false;
                   const canAddToCart = selectedDenomination && inStock;
-                  const canPurchase = selectedDenomination && inStock && selectedPaymentProvider && customerEmail && customerFirstName && customerLastName;
+                  const canPurchase = selectedDenomination && inStock && selectedPaymentProvider;
 
                   return (
                     <>
                       <div className="flex gap-2">
                         <Button
                           disabled={!canPurchase || isProcessingPayment}
-                          onClick={handleBuyNow}
-                          className="flex-1 text-sm sm:text-base h-9 sm:h-10"
+                          onClick={handleBuyNowClick}
+                          className="flex-1 text-sm"
                         >
                           {isProcessingPayment ? (
                             <>
@@ -628,7 +615,7 @@ function MarketplaceListingContent() {
                           variant="outline"
                           disabled={!canAddToCart}
                           onClick={handleAddToCart}
-                          className="flex-1 text-sm sm:text-base h-9 sm:h-10"
+                          className="flex-1 text-sm"
                         >
                           <Plus className="mr-2 h-4 w-4" />
                           Add to Cart
@@ -657,7 +644,7 @@ function MarketplaceListingContent() {
                 })()}
 
                 {/* Features */}
-                <div className="pt-3 sm:pt-4 border-t space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-muted-foreground">
+                <div className="pt-2.5 border-t space-y-1 text-xs sm:text-sm text-muted-foreground">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
                     <span>Instant Digital Delivery</span>
@@ -676,6 +663,90 @@ function MarketplaceListingContent() {
           </div>
         </div>
       </div>
+
+      {/* Customer Information Dialog */}
+      <Dialog open={showCustomerInfoDialog} onOpenChange={setShowCustomerInfoDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Complete Your Purchase</DialogTitle>
+            <DialogDescription>
+              Please provide your information to receive your gift card
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="dialogEmail" className="text-sm">
+                Email Address <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="dialogEmail"
+                type="email"
+                placeholder="your@email.com"
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
+                required
+                className="h-10 text-sm"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                We'll send your gift card to this email
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor="dialogFirstName" className="text-sm">
+                  First Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="dialogFirstName"
+                  type="text"
+                  placeholder="John"
+                  value={customerFirstName}
+                  onChange={(e) => setCustomerFirstName(e.target.value)}
+                  required
+                  className="h-10 text-sm"
+                />
+              </div>
+              <div>
+                <Label htmlFor="dialogLastName" className="text-sm">
+                  Last Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="dialogLastName"
+                  type="text"
+                  placeholder="Doe"
+                  value={customerLastName}
+                  onChange={(e) => setCustomerLastName(e.target.value)}
+                  required
+                  className="h-10 text-sm"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="sm:justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowCustomerInfoDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleBuyNow}
+              disabled={!customerEmail || !customerFirstName || !customerLastName || isProcessingPayment}
+            >
+              {isProcessingPayment ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                "Proceed to Payment"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
