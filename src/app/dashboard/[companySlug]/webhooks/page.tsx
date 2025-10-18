@@ -35,12 +35,14 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Webhook, Copy, Trash2, Edit2, Send, CheckCircle, AlertCircle, Eye, EyeOff, FileText } from "lucide-react";
+import { Loader2, Webhook, Copy, Trash2, Edit2, Send, CheckCircle, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
 import { WebhookLogsDialog } from "@/components/webhook-logs-dialog";
+import { useCurrentMembership } from "@/hooks/use-current-membership";
 
 const createWebhookSchema = z.object({
   url: z.string().url("Please enter a valid URL"),
@@ -102,8 +104,7 @@ export default function WebhooksPage() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [webhookToDelete, setWebhookToDelete] = useState<string | null>(null);
-  const [showLogsDialog, setShowLogsDialog] = useState(false);
-  const [logsWebhookId, setLogsWebhookId] = useState<string | null>(null);
+  const [selectedWebhookId, setSelectedWebhookId] = useState<string | null>(null);
 
   const {
     register: registerCreate,
@@ -132,6 +133,9 @@ export default function WebhooksPage() {
 
   const selectedCreateEvents = watchCreate("events") || [];
   const selectedUpdateEvents = watchUpdate("events") || [];
+
+  // Get current user's membership to check permissions
+  const { hasRole } = useCurrentMembership(company?.id || null);
 
   useEffect(() => {
     fetchData();
@@ -373,9 +377,8 @@ export default function WebhooksPage() {
     setMessage({ type: "success", text: "Copied to clipboard!" });
   };
 
-  const handleViewLogs = (webhookId: string) => {
-    setLogsWebhookId(webhookId);
-    setShowLogsDialog(true);
+  const handleSelectWebhook = (webhookId: string) => {
+    setSelectedWebhookId(webhookId);
   };
 
   const getStatusBadge = (webhook: WebhookEndpoint) => {
@@ -430,10 +433,12 @@ export default function WebhooksPage() {
             Receive real-time notifications when events happen in {company.displayName}
           </p>
         </div>
-        <Button onClick={() => setShowCreateDialog(true)} variant="default">
-          <Webhook className="mr-2 h-4 w-4" />
-          Create Webhook
-        </Button>
+        {hasRole("admin") && (
+          <Button onClick={() => setShowCreateDialog(true)} variant="default">
+            <Webhook className="mr-2 h-4 w-4" />
+            Create Webhook
+          </Button>
+        )}
       </div>
 
       {message && (
@@ -448,7 +453,16 @@ export default function WebhooksPage() {
         </div>
       )}
 
-      <Card>
+      <Tabs defaultValue="endpoints" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="endpoints">Endpoints</TabsTrigger>
+          <TabsTrigger value="logs" disabled={!selectedWebhookId}>
+            Logs {selectedWebhookId && "(Selected)"}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="endpoints" className="space-y-4">
+          <Card>
         <CardHeader>
           <CardTitle>Webhook Endpoints ({webhooks.length})</CardTitle>
           <CardDescription>
@@ -476,7 +490,11 @@ export default function WebhooksPage() {
                 </TableRow>
               ) : (
                 webhooks.map((webhook) => (
-                  <TableRow key={webhook.id}>
+                  <TableRow
+                    key={webhook.id}
+                    className={`cursor-pointer ${selectedWebhookId === webhook.id ? 'bg-muted/50' : ''}`}
+                    onClick={() => handleSelectWebhook(webhook.id)}
+                  >
                     <TableCell>
                       <div>
                         <div className="font-medium text-sm break-all max-w-xs">{webhook.url}</div>
@@ -493,7 +511,10 @@ export default function WebhooksPage() {
                             variant="ghost"
                             size="icon"
                             className="h-6 w-6"
-                            onClick={() => toggleSecretVisibility(webhook.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleSecretVisibility(webhook.id);
+                            }}
                           >
                             {visibleSecrets.has(webhook.id) ? (
                               <EyeOff className="h-3 w-3" />
@@ -505,7 +526,10 @@ export default function WebhooksPage() {
                             variant="ghost"
                             size="icon"
                             className="h-6 w-6"
-                            onClick={() => copyToClipboard(webhook.secret)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              copyToClipboard(webhook.secret);
+                            }}
                           >
                             <Copy className="h-3 w-3" />
                           </Button>
@@ -545,45 +569,41 @@ export default function WebhooksPage() {
                         "Never"
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleViewLogs(webhook.id)}
-                          title="View logs"
-                        >
-                          <FileText className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleTest(webhook.id)}
-                          disabled={isTesting === webhook.id}
-                          title="Send test event"
-                        >
-                          {isTesting === webhook.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Send className="h-4 w-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(webhook)}
-                          title="Edit webhook"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openDeleteDialog(webhook.id)}
-                          title="Delete webhook"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        {hasRole("admin") && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleTest(webhook.id)}
+                              disabled={isTesting === webhook.id}
+                              title="Send test event"
+                            >
+                              {isTesting === webhook.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Send className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(webhook)}
+                              title="Edit webhook"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openDeleteDialog(webhook.id)}
+                              title="Delete webhook"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -593,6 +613,20 @@ export default function WebhooksPage() {
           </Table>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="logs">
+          {selectedWebhookId && company && (
+            <WebhookLogsDialog
+              open={true}
+              onOpenChange={() => {}}
+              webhookId={selectedWebhookId}
+              companyId={company.id}
+              isEmbedded={true}
+            />
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* Create Webhook Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
@@ -836,16 +870,6 @@ export default function WebhooksPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Webhook Logs Dialog */}
-      {company && logsWebhookId && (
-        <WebhookLogsDialog
-          open={showLogsDialog}
-          onOpenChange={setShowLogsDialog}
-          webhookId={logsWebhookId}
-          companyId={company.id}
-        />
-      )}
     </div>
   );
 }

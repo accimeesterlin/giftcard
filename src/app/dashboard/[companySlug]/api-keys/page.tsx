@@ -40,6 +40,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
+import { useCurrentMembership } from "@/hooks/use-current-membership";
 
 const createApiKeySchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -111,6 +112,9 @@ export default function ApiKeysPage() {
   });
 
   const selectedScopes = watch("scopes") || [];
+
+  // Get current user's membership to check permissions
+  const { hasRole } = useCurrentMembership(company?.id || null);
 
   useEffect(() => {
     fetchData();
@@ -339,10 +343,12 @@ export default function ApiKeysPage() {
             Manage API keys for programmatic access to {company.displayName}
           </p>
         </div>
-        <Button onClick={() => setShowCreateDialog(true)} variant="default">
-          <Key className="mr-2 h-4 w-4" />
-          Create API Key
-        </Button>
+        {hasRole("admin") && (
+          <Button onClick={() => setShowCreateDialog(true)} variant="default">
+            <Key className="mr-2 h-4 w-4" />
+            Create API Key
+          </Button>
+        )}
       </div>
 
       {message && (
@@ -413,7 +419,7 @@ export default function ApiKeysPage() {
                         : "Never"}
                     </TableCell>
                     <TableCell>
-                      {key.status === "active" && (
+                      {hasRole("admin") && key.status === "active" && (
                         <Button
                           variant="ghost"
                           size="icon"
@@ -423,7 +429,7 @@ export default function ApiKeysPage() {
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       )}
-                      {key.status === "revoked" && (
+                      {hasRole("admin") && key.status === "revoked" && (
                         <Button
                           variant="ghost"
                           size="icon"

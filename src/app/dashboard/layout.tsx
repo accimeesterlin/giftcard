@@ -92,10 +92,9 @@ export default async function DashboardLayout({
             </Link>
           </div>
 
-          <div className="flex-1 flex items-center justify-between space-x-2 sm:space-x-4">
-            <CompanySwitcher />
-
+          <div className="flex-1 flex items-center justify-end">
             <div className="flex items-center space-x-2 sm:space-x-4">
+              <CompanySwitcher />
               <UserMenu user={session.user} />
             </div>
           </div>

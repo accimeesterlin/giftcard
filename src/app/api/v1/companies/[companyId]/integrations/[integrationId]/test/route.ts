@@ -3,6 +3,7 @@ import { requireUserId } from "@/lib/auth";
 import connectDB from "@/lib/db/mongodb";
 import Integration from "@/lib/db/models/Integration";
 import CompanyMembership from "@/lib/db/models/CompanyMembership";
+import AuditLog from "@/lib/db/models/AuditLog";
 import { toAppError, Errors } from "@/lib/errors";
 import crypto from "crypto";
 
@@ -88,6 +89,20 @@ export async function POST(
         details: {},
       };
     }
+
+    // Create audit log for integration test
+    await AuditLog.createLog({
+      companyId,
+      userId,
+      action: "integration.tested",
+      resourceType: "integration",
+      resourceId: integrationId,
+      metadata: {
+        provider: integration.provider,
+        testEmail,
+        success: testResult.success,
+      },
+    });
 
     return NextResponse.json(
       {

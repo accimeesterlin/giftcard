@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Loader2, Mail, CheckCircle, XCircle, Settings, Trash2, AlertCircle, TestTube, Star } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useCurrentMembership } from "@/hooks/use-current-membership";
 
 interface EmailProvider {
   id: string;
@@ -130,6 +131,9 @@ export default function IntegrationsPage() {
   const [companyId, setCompanyId] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [successMessage, setSuccessMessage] = useState<string>("");
+
+  // Get current user's membership to check permissions
+  const { hasRole } = useCurrentMembership(companyId || null);
 
   // Fetch company ID from slug
   useEffect(() => {
@@ -537,51 +541,61 @@ export default function IntegrationsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    <Button
-                      onClick={() => handleConfigureProvider(provider)}
-                      variant={isConfigured ? "outline" : "default"}
-                      size="sm"
-                    >
-                      <Settings className="mr-2 h-4 w-4" />
-                      {isConfigured ? "Manage" : "Configure"}
-                    </Button>
+                    {hasRole("admin") && (
+                      <Button
+                        onClick={() => handleConfigureProvider(provider)}
+                        variant={isConfigured ? "outline" : "default"}
+                        size="sm"
+                      >
+                        <Settings className="mr-2 h-4 w-4" />
+                        {isConfigured ? "Manage" : "Configure"}
+                      </Button>
+                    )}
 
                     {isConfigured && integration && (
                       <>
                         <div className="flex gap-2">
-                          <Button
-                            onClick={() => handleOpenTestDialog(integration)}
-                            variant="outline"
-                            size="sm"
-                          >
-                            <TestTube className="mr-2 h-4 w-4" />
-                            Test
-                          </Button>
-                          <Button
-                            onClick={() => handleToggleIntegration(integration.id, integration.enabled)}
-                            variant="outline"
-                            size="sm"
-                          >
-                            {integration.enabled ? "Disable" : "Enable"}
-                          </Button>
-                          <Button
-                            onClick={() => handleDeleteIntegration(integration.id)}
-                            variant="outline"
-                            size="sm"
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {hasRole("admin") && (
+                            <Button
+                              onClick={() => handleOpenTestDialog(integration)}
+                              variant="outline"
+                              size="sm"
+                            >
+                              <TestTube className="mr-2 h-4 w-4" />
+                              Test
+                            </Button>
+                          )}
+                          {hasRole("admin") && (
+                            <Button
+                              onClick={() => handleToggleIntegration(integration.id, integration.enabled)}
+                              variant="outline"
+                              size="sm"
+                            >
+                              {integration.enabled ? "Disable" : "Enable"}
+                            </Button>
+                          )}
+                          {hasRole("admin") && (
+                            <Button
+                              onClick={() => handleDeleteIntegration(integration.id)}
+                              variant="outline"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
-                        <Button
-                          onClick={() => handleSetPrimary(integration.id, integration.primary)}
-                          variant={integration.primary ? "default" : "outline"}
-                          size="sm"
-                          className="w-full"
-                        >
-                          <Star className={`mr-2 h-4 w-4 ${integration.primary ? 'fill-white' : ''}`} />
-                          {integration.primary ? "Primary" : "Set as Primary"}
-                        </Button>
+                        {hasRole("admin") && (
+                          <Button
+                            onClick={() => handleSetPrimary(integration.id, integration.primary)}
+                            variant={integration.primary ? "default" : "outline"}
+                            size="sm"
+                            className="w-full"
+                          >
+                            <Star className={`mr-2 h-4 w-4 ${integration.primary ? 'fill-white' : ''}`} />
+                            {integration.primary ? "Primary" : "Set as Primary"}
+                          </Button>
+                        )}
                       </>
                     )}
                   </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
 import {
   Sheet,
   SheetContent,
@@ -21,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Mail, Phone, User, ShoppingBag, Calendar, Edit, Trash2 } from "lucide-react";
+import { Loader2, Mail, Phone, User, ShoppingBag, Calendar, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 
 interface Customer {
@@ -65,28 +66,44 @@ export function CustomerDetailSidebar({
   onEdit,
   onDelete,
 }: CustomerDetailSidebarProps) {
+  const params = useParams();
+  const router = useRouter();
+  const companySlug = params.companySlug as string;
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const limit = 10;
+
   useEffect(() => {
     if (open && customer) {
       fetchCustomerOrders();
     }
-  }, [open, customer]);
+  }, [open, customer, page]);
 
   const fetchCustomerOrders = async () => {
     if (!customer) return;
 
     setIsLoading(true);
     try {
+      const params = new URLSearchParams({
+        customerEmail: customer.email,
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+
       const response = await fetch(
-        `/api/v1/companies/${companyId}/orders?customerEmail=${encodeURIComponent(customer.email)}`
+        `/api/v1/companies/${companyId}/orders?${params.toString()}`
       );
       if (response.ok) {
         const data = await response.json();
         setOrders(data.data || []);
+        setTotalOrders(data.pagination?.total || data.data?.length || 0);
       }
     } catch (error) {
       console.error("Failed to fetch customer orders:", error);
@@ -124,6 +141,11 @@ export function CustomerDetailSidebar({
     );
   };
 
+  const handleOrderClick = (orderId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    router.push(`/dashboard/${companySlug}/orders/${orderId}`);
+  };
+
   const handleDelete = async () => {
     if (!customer) return;
 
@@ -151,6 +173,8 @@ export function CustomerDetailSidebar({
       setIsDeleting(false);
     }
   };
+
+  const totalPages = Math.ceil(totalOrders / limit);
 
   if (!customer) return null;
 
@@ -259,43 +283,64 @@ export function CustomerDetailSidebar({
               </div>
             ) : (
               <div className="space-y-3">
-                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-                  {orders.slice(0, 5).map((order) => (
+                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                  {orders.map((order) => (
                     <div
                       key={order.id}
-                      className="border rounded-lg p-4 space-y-3 hover:bg-muted/50 transition-colors"
+                      onClick={(e) => handleOrderClick(order.id, e)}
+                      className="border rounded-lg p-2 space-y-2 hover:bg-muted/50 transition-colors cursor-pointer"
                     >
                       <div className="flex items-start justify-between">
                         <div>
-                          <p className="font-medium">{order.listingTitle}</p>
-                          <p className="text-sm text-muted-foreground">{order.brand}</p>
+                          <p className="font-medium text-sm">{order.listingTitle}</p>
+                          <p className="text-xs text-muted-foreground">{order.brand}</p>
                         </div>
-                        <p className="font-semibold">
+                        <p className="font-semibold text-sm">
                           {order.currency} {order.total.toFixed(2)}
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span>
                           {order.quantity}x {order.currency} {order.denomination}
                         </span>
+                        <span>•</span>
+                        <span>{format(new Date(order.createdAt), "MMM d, yyyy")}</span>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         {getPaymentStatusBadge(order.paymentStatus)}
                         {getFulfillmentStatusBadge(order.fulfillmentStatus)}
                       </div>
-
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(order.createdAt), "MMM d, yyyy 'at' h:mm a")}
-                      </p>
                     </div>
                   ))}
                 </div>
-                {orders.length > 5 && (
-                  <p className="text-sm text-muted-foreground text-center pt-2">
-                    Showing 5 of {orders.length} orders
-                  </p>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between pt-3 border-t">
+                    <p className="text-xs text-muted-foreground">
+                      Page {page} of {totalPages} ({totalOrders} total)
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(page - 1)}
+                        disabled={page === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(page + 1)}
+                        disabled={page >= totalPages}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </div>
             )}

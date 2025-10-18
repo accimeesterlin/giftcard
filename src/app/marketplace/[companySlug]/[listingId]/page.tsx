@@ -389,10 +389,10 @@ function MarketplaceListingContent() {
             {listing.termsAndConditions && (
               <Card>
                 <CardHeader className="p-3 sm:p-6">
-                  <CardTitle className="text-base sm:text-lg">Terms & Conditions</CardTitle>
+                  <CardTitle className="text-sm sm:text-base">Terms & Conditions</CardTitle>
                 </CardHeader>
                 <CardContent className="p-3 sm:p-6 pt-0">
-                  <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap">
+                  <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
                     {listing.termsAndConditions}
                   </p>
                 </CardContent>
@@ -404,8 +404,7 @@ function MarketplaceListingContent() {
           <div>
             <Card className="sticky top-4">
               <CardHeader className="p-3 sm:p-6">
-                <CardTitle className="text-base sm:text-lg">Purchase Gift Card</CardTitle>
-                <CardDescription className="text-xs sm:text-sm">Select denomination and quantity</CardDescription>
+                <CardTitle className="text-sm sm:text-base">Purchase Gift Card</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 sm:space-y-6 p-3 sm:p-6 pt-0">
                 {/* Denomination Selection */}
@@ -424,7 +423,7 @@ function MarketplaceListingContent() {
                           key={denom}
                           variant={selectedDenomination === denom ? "default" : "outline"}
                           onClick={() => inStock && setSelectedDenomination(denom)}
-                          className="h-auto py-1.5 sm:py-2 px-2 sm:px-3 relative"
+                          className="h-auto py-1 sm:py-1.5 px-1.5 sm:px-2 relative"
                           disabled={!inStock}
                         >
                           <div>
@@ -607,20 +606,20 @@ function MarketplaceListingContent() {
 
                   return (
                     <>
-                      <div className="flex flex-col gap-2">
+                      <div className="flex gap-2">
                         <Button
                           disabled={!canPurchase || isProcessingPayment}
                           onClick={handleBuyNow}
-                          className="w-full text-sm sm:text-base h-10 sm:h-11"
+                          className="flex-1 text-sm sm:text-base h-9 sm:h-10"
                         >
                           {isProcessingPayment ? (
                             <>
-                              <Loader2 className="mr-2 h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                               Processing...
                             </>
                           ) : (
                             <>
-                              <ShoppingCart className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                              <ShoppingCart className="mr-2 h-4 w-4" />
                               Buy Now
                             </>
                           )}
@@ -629,9 +628,9 @@ function MarketplaceListingContent() {
                           variant="outline"
                           disabled={!canAddToCart}
                           onClick={handleAddToCart}
-                          className="w-full text-sm sm:text-base h-10 sm:h-11"
+                          className="flex-1 text-sm sm:text-base h-9 sm:h-10"
                         >
-                          <Plus className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                          <Plus className="mr-2 h-4 w-4" />
                           Add to Cart
                         </Button>
                       </div>

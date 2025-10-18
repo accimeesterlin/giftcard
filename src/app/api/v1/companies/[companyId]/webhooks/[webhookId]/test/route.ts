@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireUserId } from "@/lib/auth";
 import { WebhookService } from "@/lib/services/webhook.service";
 import { toAppError } from "@/lib/errors";
+import connectDB from "@/lib/db/mongodb";
+import AuditLog from "@/lib/db/models/AuditLog";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +40,20 @@ export async function POST(
     };
 
     await WebhookService.triggerWebhooks(companyId, testEvent as any, testData);
+
+    // Create audit log for webhook test
+    await connectDB();
+    await AuditLog.createLog({
+      companyId,
+      userId,
+      action: "webhook.tested",
+      resourceType: "webhook",
+      resourceId: webhookId,
+      metadata: {
+        testEvent,
+        webhookUrl: webhook.url,
+      },
+    });
 
     return NextResponse.json(
       {

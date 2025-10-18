@@ -43,6 +43,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, Search, CheckCircle, Send, Copy, ChevronLeft, ChevronRight, AlertCircle, Settings, Eye, EyeOff, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
+import { useCurrentMembership } from "@/hooks/use-current-membership";
 
 interface Order {
   id: string;
@@ -104,6 +105,9 @@ export default function OrdersPage() {
   const [totalOrders, setTotalOrders] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const limit = 20;
+
+  // Get current user's membership to check permissions
+  const { hasRole } = useCurrentMembership(company?.id || null);
 
   useEffect(() => {
     fetchCompany();
@@ -320,7 +324,9 @@ export default function OrdersPage() {
     }
   };
 
-  const toggleCodeReveal = (index: number) => {
+  const toggleCodeReveal = async (index: number) => {
+    const isRevealing = !revealedCodes.has(index);
+
     setRevealedCodes(prev => {
       const newSet = new Set(prev);
       if (newSet.has(index)) {
@@ -330,6 +336,19 @@ export default function OrdersPage() {
       }
       return newSet;
     });
+
+    // Log code reveal in audit logs (only when revealing, not hiding)
+    if (isRevealing && selectedOrder && company) {
+      try {
+        await fetch(`/api/v1/companies/${company.id}/orders/${selectedOrder.id}/reveal`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ codeIndex: index }),
+        });
+      } catch (error) {
+        console.error("Failed to log code reveal:", error);
+      }
+    }
   };
 
   const getPaymentStatusBadge = (status: string) => {
@@ -566,44 +585,53 @@ export default function OrdersPage() {
                       </div>
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Select
-                        value={order.paymentStatus}
-                        onValueChange={(value) => handleQuickStatusUpdate(order.id, 'payment', value)}
-                        disabled={updatingStatus === `${order.id}-payment`}
-                      >
-                        <SelectTrigger className="w-[140px] h-8">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="processing">Processing</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                          <SelectItem value="failed">Failed</SelectItem>
-                          <SelectItem value="refunded">Refunded</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      {hasRole("agent") ? (
+                        <Select
+                          value={order.paymentStatus}
+                          onValueChange={(value) => handleQuickStatusUpdate(order.id, 'payment', value)}
+                          disabled={updatingStatus === `${order.id}-payment`}
+                        >
+                          <SelectTrigger className="w-[140px] h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="processing">Processing</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="failed">Failed</SelectItem>
+                            <SelectItem value="refunded">Refunded</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        getPaymentStatusBadge(order.paymentStatus)
+                      )}
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Select
-                        value={order.fulfillmentStatus}
-                        onValueChange={(value) => handleQuickStatusUpdate(order.id, 'fulfillment', value)}
-                        disabled={updatingStatus === `${order.id}-fulfillment`}
-                      >
-                        <SelectTrigger className="w-[140px] h-8">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="fulfilled">Fulfilled</SelectItem>
-                          <SelectItem value="failed">Failed</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      {hasRole("agent") ? (
+                        <Select
+                          value={order.fulfillmentStatus}
+                          onValueChange={(value) => handleQuickStatusUpdate(order.id, 'fulfillment', value)}
+                          disabled={updatingStatus === `${order.id}-fulfillment`}
+                        >
+                          <SelectTrigger className="w-[140px] h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="fulfilled">Fulfilled</SelectItem>
+                            <SelectItem value="failed">Failed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        getFulfillmentStatusBadge(order.fulfillmentStatus)
+                      )}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {format(new Date(order.createdAt), "MMM d, yyyy")}
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
-                      {order.paymentStatus === "completed" &&
+                      {hasRole("agent") &&
+                        order.paymentStatus === "completed" &&
                         order.fulfillmentStatus === "pending" && (
                           <Button
                             size="sm"
@@ -721,12 +749,22 @@ export default function OrdersPage() {
                   <div className="space-y-2">
                     <div>
                       <Label className="text-xs text-muted-foreground">Name</Label>
-                      <p className="text-sm">{selectedOrder.customerName || "Guest Customer"}</p>
+                      <Link
+                        href={`/dashboard/${companySlug}/customers?search=${encodeURIComponent(selectedOrder.customerEmail)}`}
+                        className="text-sm hover:underline text-primary"
+                      >
+                        {selectedOrder.customerName || "Guest Customer"}
+                      </Link>
                     </div>
                     <div>
                       <Label className="text-xs text-muted-foreground">Email</Label>
                       <div className="flex items-center gap-2">
-                        <p className="text-sm">{selectedOrder.customerEmail}</p>
+                        <Link
+                          href={`/dashboard/${companySlug}/customers?search=${encodeURIComponent(selectedOrder.customerEmail)}`}
+                          className="text-sm hover:underline text-primary"
+                        >
+                          {selectedOrder.customerEmail}
+                        </Link>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -893,7 +931,7 @@ export default function OrdersPage() {
                 )}
 
                 {/* Actions */}
-                {selectedOrder.paymentStatus === "completed" && selectedOrder.fulfillmentStatus === "pending" && (
+                {hasRole("agent") && selectedOrder.paymentStatus === "completed" && selectedOrder.fulfillmentStatus === "pending" && (
                   <div className="border-t pt-4">
                     <Button
                       className="w-full"

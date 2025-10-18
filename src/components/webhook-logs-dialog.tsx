@@ -55,6 +55,7 @@ interface WebhookLogsDialogProps {
   onOpenChange: (open: boolean) => void;
   webhookId: string;
   companyId: string;
+  isEmbedded?: boolean;
 }
 
 export function WebhookLogsDialog({
@@ -62,6 +63,7 @@ export function WebhookLogsDialog({
   onOpenChange,
   webhookId,
   companyId,
+  isEmbedded = false,
 }: WebhookLogsDialogProps) {
   const [logs, setLogs] = useState<WebhookLog[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -74,10 +76,10 @@ export function WebhookLogsDialog({
   const limit = 20;
 
   useEffect(() => {
-    if (open && webhookId) {
+    if ((open || isEmbedded) && webhookId) {
       fetchLogs();
     }
-  }, [open, webhookId, searchQuery, successFilter, offset]);
+  }, [open, isEmbedded, webhookId, searchQuery, successFilter, offset]);
 
   const fetchLogs = async () => {
     setIsLoading(true);
@@ -161,17 +163,8 @@ export function WebhookLogsDialog({
     );
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Webhook Logs</DialogTitle>
-          <DialogDescription>
-            View detailed logs of webhook deliveries and responses
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
+  const content = (
+    <div className="space-y-4">
           {/* Filters */}
           <div className="flex gap-4">
             <div className="relative flex-1">
@@ -349,6 +342,32 @@ export function WebhookLogsDialog({
             </div>
           )}
         </div>
+  );
+
+  if (isEmbedded) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Webhook Logs</h2>
+          <p className="text-muted-foreground mt-1">
+            View detailed logs of webhook deliveries and responses
+          </p>
+        </div>
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Webhook Logs</DialogTitle>
+          <DialogDescription>
+            View detailed logs of webhook deliveries and responses
+          </DialogDescription>
+        </DialogHeader>
+        {content}
       </DialogContent>
     </Dialog>
   );

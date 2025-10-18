@@ -13,10 +13,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, AlertTriangle, Package, Plus } from "lucide-react";
+import { Loader2, AlertTriangle, Package, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
 import { InventoryUploadDialog } from "@/components/inventory-upload-dialog";
+import { useCurrentMembership } from "@/hooks/use-current-membership";
 
 interface Company {
   id: string;
@@ -44,9 +45,17 @@ export default function InventoryPage() {
   const [isInventoryDialogOpen, setIsInventoryDialogOpen] = useState(false);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
 
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [totalListings, setTotalListings] = useState(0);
+  const limit = 10;
+
+  // Get current user's membership to check permissions
+  const { hasRole } = useCurrentMembership(company?.id || null);
+
   useEffect(() => {
     fetchData();
-  }, [companySlug]);
+  }, [companySlug, page]);
 
   const fetchData = async () => {
     try {
@@ -59,11 +68,16 @@ export default function InventoryPage() {
         if (foundCompany) {
           setCompany(foundCompany);
 
-          // Get listings with inventory
-          const listingsResponse = await fetch(`/api/v1/companies/${foundCompany.id}/listings`);
+          // Get listings with inventory (with pagination)
+          const params = new URLSearchParams({
+            page: page.toString(),
+            limit: limit.toString(),
+          });
+          const listingsResponse = await fetch(`/api/v1/companies/${foundCompany.id}/listings?${params.toString()}`);
           if (listingsResponse.ok) {
             const listingsData = await listingsResponse.json();
             setListings(listingsData.data);
+            setTotalListings(listingsData.pagination?.total || listingsData.data.length);
           }
         }
       }
@@ -111,6 +125,7 @@ export default function InventoryPage() {
   const totalSold = listings.reduce((sum, listing) => sum + listing.soldCount, 0);
   const lowStockCount = listings.filter((l) => l.totalStock > 0 && l.totalStock < 10).length;
   const outOfStockCount = listings.filter((l) => l.totalStock === 0).length;
+  const totalPages = Math.ceil(totalListings / limit);
 
   if (isLoading) {
     return (
@@ -258,20 +273,51 @@ export default function InventoryPage() {
                     </TableCell>
                     <TableCell>{getStockStatus(listing.totalStock)}</TableCell>
                     <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleAddStock(listing)}
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add Stock
-                      </Button>
+                      {hasRole("manager") && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleAddStock(listing)}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add Stock
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
               )}
             </TableBody>
           </Table>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-muted-foreground">
+                Page {page} of {totalPages} ({totalListings} total items)
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(page - 1)}
+                  disabled={page === 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(page + 1)}
+                  disabled={page >= totalPages}
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

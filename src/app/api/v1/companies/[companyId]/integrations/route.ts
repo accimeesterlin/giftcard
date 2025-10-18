@@ -4,6 +4,7 @@ import connectDB from "@/lib/db/mongodb";
 import Integration from "@/lib/db/models/Integration";
 import Company from "@/lib/db/models/Company";
 import CompanyMembership from "@/lib/db/models/CompanyMembership";
+import AuditLog from "@/lib/db/models/AuditLog";
 import { nanoid } from "nanoid";
 import crypto from "crypto";
 import { createIntegrationSchema } from "@/lib/validation/schemas";
@@ -190,6 +191,19 @@ export async function POST(
       type,
       config: encryptedConfig,
       enabled: true,
+    });
+
+    // Create audit log
+    await AuditLog.createLog({
+      companyId,
+      userId,
+      action: "integration.created",
+      resourceType: "integration",
+      resourceId: integration.id,
+      metadata: {
+        provider: integration.provider,
+        type: integration.type,
+      },
     });
 
     return NextResponse.json(

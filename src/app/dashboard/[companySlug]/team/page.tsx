@@ -269,10 +269,10 @@ export default function TeamManagementPage() {
 
   const getStatusBadge = (status: string) => {
     if (status === "active") {
-      return <Badge variant="outline" className="text-green-700 border-green-700">Active</Badge>;
+      return <Badge variant="default" className="bg-green-600 hover:bg-green-700">Active</Badge>;
     }
     if (status === "pending") {
-      return <Badge variant="outline" className="text-yellow-700 border-yellow-700">Pending</Badge>;
+      return <Badge variant="secondary">Pending</Badge>;
     }
     return <Badge variant="outline">{status}</Badge>;
   };
