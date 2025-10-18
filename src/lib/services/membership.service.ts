@@ -13,6 +13,7 @@ import AuditLog from "@/lib/db/models/AuditLog";
 import { EmailService } from "./email.service";
 import { Errors } from "@/lib/errors";
 import type { CompanyRoleType } from "@/types";
+import { checkInvitationRateLimit, checkResendRateLimit } from "@/lib/middleware/invitation-rate-limit";
 
 export class MembershipService {
   /**
@@ -30,6 +31,9 @@ export class MembershipService {
     role: CompanyRoleType;
   }) {
     await connectDB();
+
+    // Check rate limit first to prevent abuse
+    checkInvitationRateLimit(companyId, invitedBy);
 
     // Verify inviter has permission
     const inviterMembership = await CompanyMembership.findByUserAndCompany(invitedBy, companyId);
@@ -84,6 +88,7 @@ export class MembershipService {
         const invitationUrl = `${process.env.NEXTAUTH_URL}/invitations/accept?token=${invitationToken}`;
 
         await EmailService.sendTeamInvitation({
+          companyId,
           to: email,
           inviterName: inviter?.name || "A team member",
           companyName: company.displayName,
@@ -114,6 +119,7 @@ export class MembershipService {
       status: "pending",
       invitedBy,
       invitedAt: new Date(),
+      invitationEmail: email.toLowerCase(), // Store email for pending invitations
       invitationToken,
       invitationExpiresAt: addDays(new Date(), 7),
       permissions: [],
@@ -170,6 +176,14 @@ export class MembershipService {
       throw Errors.forbidden("This invitation is for a different user");
     }
 
+    // Get company and user details for emails
+    const company = await Company.findOne({ id: membership.companyId });
+    const newMember = await User.findOne({ id: userId });
+
+    if (!company || !newMember) {
+      throw Errors.notFound("Company or user not found");
+    }
+
     // Update membership
     membership.userId = userId;
     membership.status = "active";
@@ -187,6 +201,41 @@ export class MembershipService {
       resourceType: "membership",
       resourceId: membership.id,
     });
+
+    // Send welcome email to new member
+    try {
+      await EmailService.sendWelcomeToNewMember({
+        companyId: membership.companyId,
+        to: newMember.email,
+        memberName: newMember.name || "Team member",
+        companyName: company.displayName,
+        companySlug: company.slug,
+        role: membership.role,
+      });
+    } catch (error) {
+      console.error("Failed to send welcome email to new member:", error);
+      // Don't fail the whole operation if email fails
+    }
+
+    // Send notification to inviter
+    if (membership.invitedBy) {
+      try {
+        const inviter = await User.findOne({ id: membership.invitedBy });
+        if (inviter) {
+          await EmailService.sendInvitationAcceptedToInviter({
+            companyId: membership.companyId,
+            to: inviter.email,
+            inviteeName: newMember.name || "A team member",
+            inviteeEmail: newMember.email,
+            companyName: company.displayName,
+            role: membership.role,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to send notification to inviter:", error);
+        // Don't fail the whole operation if email fails
+      }
+    }
 
     return membership;
   }
@@ -346,6 +395,7 @@ export class MembershipService {
 
     if (user && company) {
       await EmailService.sendMembershipRevoked({
+        companyId,
         to: user.email,
         companyName: company.displayName,
       });

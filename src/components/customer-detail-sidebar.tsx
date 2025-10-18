@@ -259,37 +259,44 @@ export function CustomerDetailSidebar({
               </div>
             ) : (
               <div className="space-y-3">
-                {orders.map((order) => (
-                  <div
-                    key={order.id}
-                    className="border rounded-lg p-4 space-y-3 hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-medium">{order.listingTitle}</p>
-                        <p className="text-sm text-muted-foreground">{order.brand}</p>
+                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                  {orders.slice(0, 5).map((order) => (
+                    <div
+                      key={order.id}
+                      className="border rounded-lg p-4 space-y-3 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-medium">{order.listingTitle}</p>
+                          <p className="text-sm text-muted-foreground">{order.brand}</p>
+                        </div>
+                        <p className="font-semibold">
+                          {order.currency} {order.total.toFixed(2)}
+                        </p>
                       </div>
-                      <p className="font-semibold">
-                        {order.currency} {order.total.toFixed(2)}
+
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span>
+                          {order.quantity}x {order.currency} {order.denomination}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {getPaymentStatusBadge(order.paymentStatus)}
+                        {getFulfillmentStatusBadge(order.fulfillmentStatus)}
+                      </div>
+
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(order.createdAt), "MMM d, yyyy 'at' h:mm a")}
                       </p>
                     </div>
-
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span>
-                        {order.quantity}x {order.currency} {order.denomination}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {getPaymentStatusBadge(order.paymentStatus)}
-                      {getFulfillmentStatusBadge(order.fulfillmentStatus)}
-                    </div>
-
-                    <p className="text-xs text-muted-foreground">
-                      {format(new Date(order.createdAt), "MMM d, yyyy 'at' h:mm a")}
-                    </p>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                {orders.length > 5 && (
+                  <p className="text-sm text-muted-foreground text-center pt-2">
+                    Showing 5 of {orders.length} orders
+                  </p>
+                )}
               </div>
             )}
           </div>

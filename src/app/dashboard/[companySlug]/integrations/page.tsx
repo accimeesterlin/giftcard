@@ -393,8 +393,11 @@ export default function IntegrationsPage() {
 
       if (data.data.success) {
         setSuccessMessage(data.data.message);
-        setIsTestDialogOpen(false);
-        setTestEmail("");
+        // Keep dialog open briefly to show success, then close
+        setTimeout(() => {
+          setIsTestDialogOpen(false);
+          setTestEmail("");
+        }, 1500);
       } else {
         setError(data.data.message);
       }
@@ -668,6 +671,13 @@ export default function IntegrationsPage() {
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {successMessage && (
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>{successMessage}</AlertDescription>
               </Alert>
             )}
 

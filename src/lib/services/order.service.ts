@@ -269,13 +269,56 @@ export class OrderService {
     }
 
     // Get reserved inventory codes
-    const reservedCodes = await Inventory.find({
+    let reservedCodes = await Inventory.find({
       listingId: order.listingId,
       denomination: order.denomination,
       status: "reserved",
     })
       .select("+code +pin") // Include encrypted fields
       .limit(order.quantity);
+
+    // If no reserved codes found (legacy orders), try to reserve now
+    if (reservedCodes.length === 0) {
+      console.log(`No reserved codes found for order ${orderId}. Attempting to reserve now...`);
+
+      // Check if enough inventory is available
+      const availableInventory = await Inventory.countDocuments({
+        listingId: order.listingId,
+        denomination: order.denomination,
+        status: "available",
+        $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
+      });
+
+      if (availableInventory < order.quantity) {
+        throw Errors.badRequest(
+          `Not enough inventory. Only ${availableInventory} units available`
+        );
+      }
+
+      // Reserve codes
+      const reservedCodeIds = [];
+      for (let i = 0; i < order.quantity; i++) {
+        const code = await Inventory.reserveCode(order.listingId, order.denomination);
+
+        if (!code) {
+          // Rollback previous reservations if we can't fulfill the order
+          if (reservedCodeIds.length > 0) {
+            await Inventory.updateMany(
+              { id: { $in: reservedCodeIds } },
+              { $set: { status: "available" } }
+            );
+          }
+          throw Errors.badRequest("Failed to reserve inventory codes");
+        }
+
+        reservedCodeIds.push(code.id);
+      }
+
+      // Fetch the newly reserved codes with sensitive fields
+      reservedCodes = await Inventory.find({
+        id: { $in: reservedCodeIds },
+      }).select("+code +pin");
+    }
 
     if (reservedCodes.length < order.quantity) {
       throw Errors.badRequest(
@@ -335,18 +378,42 @@ export class OrderService {
    * Private helper method
    */
   private static async deliverOrder(order: any) {
+    console.log(`📦 deliverOrder called for order: ${order.id}, customer: ${order.customerEmail}`);
+
     if (!order.giftCardCodes || order.giftCardCodes.length === 0) {
+      console.warn(`⚠️ No gift card codes found for order ${order.id}, skipping email delivery`);
       return;
     }
 
-    const codesText = order.giftCardCodes
+    console.log(`📦 Preparing to send ${order.giftCardCodes.length} gift card codes via email`);
+
+    // Get listing to fetch custom instructions
+    const listing = await Listing.findOne({ id: order.listingId });
+
+    // Use custom instructions if available, otherwise use default
+    const defaultInstructions = `Follow the instructions provided by ${order.brand} to redeem your gift card code${order.quantity === 1 ? '' : 's'}. Visit the ${order.brand} website or present ${order.quantity === 1 ? 'this code' : 'these codes'} at checkout.`;
+    const redemptionInstructions = listing?.instructions || defaultInstructions;
+
+    // Build gift card codes display
+    const codesHtml = order.giftCardCodes
       .map((gc: any, index: number) => {
-        let text = `${index + 1}. Code: ${gc.code}`;
-        if (gc.pin) text += ` | PIN: ${gc.pin}`;
-        if (gc.serialNumber) text += ` | Serial: ${gc.serialNumber}`;
-        return text;
+        let html = `<div style="margin-bottom: 16px; padding: 16px; background: #ffffff; border: 1px solid #d1d5db; border-radius: 6px;">
+          <div style="font-weight: 600; color: #111827; margin-bottom: 8px;">Card ${index + 1}</div>
+          <div style="font-family: 'Courier New', monospace;">
+            <div><strong>Code:</strong> ${gc.code}</div>`;
+
+        if (gc.pin) {
+          html += `<div><strong>PIN:</strong> ${gc.pin}</div>`;
+        }
+
+        if (gc.serialNumber) {
+          html += `<div><strong>Serial Number:</strong> ${gc.serialNumber}</div>`;
+        }
+
+        html += `</div></div>`;
+        return html;
       })
-      .join("\n");
+      .join("");
 
     const html = `
       <!DOCTYPE html>
@@ -355,13 +422,13 @@ export class OrderService {
           <meta charset="utf-8">
           <title>Your Gift Card Codes</title>
           <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb; }
             .container { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 32px; }
             .header { text-align: center; margin-bottom: 32px; }
             .header h1 { color: #111827; margin: 0; font-size: 24px; }
-            .codes { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 20px; margin: 24px 0; font-family: 'Courier New', monospace; white-space: pre-wrap; }
+            .codes-container { background: #f9fafb; border-radius: 6px; padding: 20px; margin: 24px 0; }
+            .info-box { background: #f3f4f6; border-left: 4px solid #111827; padding: 16px; margin: 24px 0; }
             .footer { text-align: center; color: #6b7280; font-size: 14px; margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e7eb; }
-            .button { display: inline-block; background: #111827; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500; margin: 24px 0; }
           </style>
         </head>
         <body>
@@ -372,32 +439,42 @@ export class OrderService {
 
             <p>Hi${order.customerName ? ` ${order.customerName}` : ""},</p>
 
-            <p>Thank you for your purchase! Here are your ${order.brand} gift card codes:</p>
+            <p>Thank you for your purchase! Your order has been fulfilled. Here ${order.quantity === 1 ? 'is your' : 'are your'} <strong>${order.brand}</strong> gift card${order.quantity === 1 ? '' : 's'}:</p>
 
-            <div class="codes">${codesText}</div>
+            <div class="codes-container">
+              ${codesHtml}
+            </div>
 
-            <p><strong>Order Details:</strong></p>
-            <ul>
-              <li>Order ID: ${order.id}</li>
-              <li>Product: ${order.listingTitle}</li>
-              <li>Quantity: ${order.quantity} x ${order.currency} ${order.denomination}</li>
-              <li>Total Paid: ${order.currency} ${order.total.toFixed(2)}</li>
-            </ul>
+            <div class="info-box">
+              <p style="margin: 0 0 8px 0;"><strong>Order Details:</strong></p>
+              <ul style="margin: 0; padding-left: 20px;">
+                <li><strong>Order ID:</strong> ${order.id}</li>
+                <li><strong>Product:</strong> ${order.listingTitle}</li>
+                <li><strong>Quantity:</strong> ${order.quantity} x ${order.currency} ${order.denomination}</li>
+                <li><strong>Total Paid:</strong> ${order.currency} ${order.total.toFixed(2)}</li>
+              </ul>
+            </div>
 
-            <p><strong>How to redeem:</strong> Follow the instructions provided by ${order.brand} to redeem your gift card codes.</p>
+            <p><strong>How to redeem:</strong></p>
+            <p>${redemptionInstructions}</p>
+
+            <p style="color: #dc2626; font-weight: 500;">⚠️ Important: Keep this email safe and do not share your code${order.quantity === 1 ? '' : 's'} with anyone you don't trust.</p>
 
             <div class="footer">
               <p>This is an automated email. Please keep this email for your records.</p>
               <p>Order placed on ${new Date(order.createdAt).toLocaleDateString()}</p>
+              <p style="margin-top: 16px; font-size: 12px;">Need help? Contact our support team.</p>
             </div>
           </div>
         </body>
       </html>
     `;
 
-    await EmailService.send({
+    // Send email using the company's primary email integration
+    await EmailService.sendViaIntegration({
+      companyId: order.companyId,
       to: order.deliveryEmail || order.customerEmail,
-      subject: `Your ${order.brand} Gift Card Codes - Order ${order.id}`,
+      subject: `Your ${order.brand} Gift Card${order.quantity === 1 ? '' : 's'} - Order ${order.id}`,
       html,
     });
 

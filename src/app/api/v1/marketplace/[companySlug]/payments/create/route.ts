@@ -11,6 +11,7 @@ import PaymentProviderConfig from "@/lib/db/models/PaymentProviderConfig";
 import Customer from "@/lib/db/models/Customer";
 import Listing from "@/lib/db/models/Listing";
 import Order from "@/lib/db/models/Order";
+import Inventory from "@/lib/db/models/Inventory";
 import { PGPayService } from "@/lib/services/pgpay.service";
 import { toAppError, Errors } from "@/lib/errors";
 
@@ -66,19 +67,53 @@ export async function POST(
       throw Errors.badRequest("Invalid denomination for this listing");
     }
 
-    // Get payment provider configuration
-    const providerConfig = await PaymentProviderConfig.findOne({
-      companyId: company.id,
-      provider: input.provider,
-      enabled: true,
-      status: "connected",
-    }).select("+userId"); // Include userId for PGPay
+    // Check if enough inventory is available
+    const availableInventory = await Inventory.countDocuments({
+      listingId: input.listingId,
+      denomination: input.denomination,
+      status: "available",
+      $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
+    });
 
-    if (!providerConfig) {
+    if (availableInventory < input.quantity) {
       throw Errors.badRequest(
-        `Payment provider ${input.provider} is not configured or enabled for this company`
+        `Not enough inventory. Only ${availableInventory} units available`
       );
     }
+
+    // Reserve inventory codes
+    const reservedCodes = [];
+    try {
+      for (let i = 0; i < input.quantity; i++) {
+        const code = await Inventory.reserveCode(input.listingId, input.denomination);
+
+        if (!code) {
+          // Rollback previous reservations if we can't fulfill the order
+          if (reservedCodes.length > 0) {
+            await Inventory.updateMany(
+              { _id: { $in: reservedCodes } },
+              { $set: { status: "available" } }
+            );
+          }
+          throw Errors.badRequest("Failed to reserve inventory codes");
+        }
+
+        reservedCodes.push(code._id);
+      }
+
+      // Get payment provider configuration
+      const providerConfig = await PaymentProviderConfig.findOne({
+        companyId: company.id,
+        provider: input.provider,
+        enabled: true,
+        status: "connected",
+      }).select("+userId"); // Include userId for PGPay
+
+      if (!providerConfig) {
+        throw Errors.badRequest(
+          `Payment provider ${input.provider} is not configured or enabled for this company`
+        );
+      }
 
     // Find or create customer
     let customer = await Customer.findByEmail(company.id, input.customerEmail);
@@ -197,6 +232,17 @@ export async function POST(
 
     // Other payment providers can be added here
     throw Errors.badRequest(`Payment provider ${input.provider} is not yet implemented`);
+    } catch (error) {
+      // Rollback reserved inventory codes on error
+      if (reservedCodes.length > 0) {
+        console.log(`Rolling back ${reservedCodes.length} reserved codes due to error`);
+        await Inventory.updateMany(
+          { _id: { $in: reservedCodes } },
+          { $set: { status: "available" } }
+        );
+      }
+      throw error;
+    }
   } catch (error) {
     const appError = toAppError(error);
 

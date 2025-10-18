@@ -11,6 +11,7 @@ import Order from "@/lib/db/models/Order";
 import Customer from "@/lib/db/models/Customer";
 import Listing from "@/lib/db/models/Listing";
 import { PGPayService } from "@/lib/services/pgpay.service";
+import { OrderService } from "@/lib/services/order.service";
 import { toAppError, Errors } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
@@ -108,15 +109,38 @@ export async function POST(
             await customer.save();
           }
 
-          // Update listing soldCount
+          // Get listing to check autoFulfill setting
           const listing = await Listing.findOne({
             id: order.listingId,
             companyId: company.id,
           });
 
-          if (listing) {
-            listing.soldCount += order.quantity;
-            await listing.save();
+          console.log(`📦 Listing autoFulfill status: ${listing?.autoFulfill}`);
+
+          // Auto-fulfill if enabled
+          let fulfillmentStatus = {
+            attempted: false,
+            succeeded: false,
+            error: null as string | null,
+          };
+
+          if (listing && listing.autoFulfill) {
+            fulfillmentStatus.attempted = true;
+            console.log(`🔄 Attempting to auto-fulfill order ${order.id}...`);
+
+            try {
+              await OrderService.fulfillOrder(company.id, order.id, "system");
+              fulfillmentStatus.succeeded = true;
+              console.log(`✅ Order ${order.id} auto-fulfilled and email sent successfully`);
+            } catch (fulfillError) {
+              const errorMessage = fulfillError instanceof Error ? fulfillError.message : "Unknown error";
+              fulfillmentStatus.error = errorMessage;
+              console.error(`❌ Failed to auto-fulfill order ${order.id}:`, fulfillError);
+              console.error(`Error details:`, errorMessage);
+              // Don't throw error - payment was successful, fulfillment can be done manually
+            }
+          } else {
+            console.log(`⏭️  Auto-fulfill skipped. Listing autoFulfill: ${listing?.autoFulfill}`);
           }
 
           return NextResponse.json(
@@ -127,9 +151,16 @@ export async function POST(
                 amount: order.total,
                 currency: order.currency,
                 verifiedAt: new Date().toISOString(),
+                fulfilled: fulfillmentStatus.succeeded,
+                autoFulfillAttempted: fulfillmentStatus.attempted,
+                fulfillmentError: fulfillmentStatus.error,
               },
               meta: {
-                message: "Payment verified successfully",
+                message: fulfillmentStatus.succeeded
+                  ? "Payment verified and order fulfilled successfully"
+                  : fulfillmentStatus.error
+                  ? `Payment verified successfully, but auto-fulfillment failed: ${fulfillmentStatus.error}`
+                  : "Payment verified successfully",
               },
             },
             {

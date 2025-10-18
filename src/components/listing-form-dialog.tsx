@@ -58,6 +58,7 @@ const listingFormSchema = z.object({
   minPurchaseAmount: z.coerce.number().positive().optional().or(z.literal("")),
   maxPurchaseAmount: z.coerce.number().positive().optional().or(z.literal("")),
   autoFulfill: z.boolean().optional().default(true),
+  instructions: z.string().max(2000).optional(),
   termsAndConditions: z.string().max(5000).optional(),
 });
 
@@ -229,6 +230,7 @@ export function ListingFormDialog({
         minPurchaseAmount: listing.minPurchaseAmount || "",
         maxPurchaseAmount: listing.maxPurchaseAmount || "",
         autoFulfill: listing.autoFulfill ?? true,
+        instructions: listing.instructions || "",
         termsAndConditions: listing.termsAndConditions || "",
       });
     } else if (!open) {
@@ -281,6 +283,7 @@ export function ListingFormDialog({
         minPurchaseAmount: data.minPurchaseAmount || null,
         maxPurchaseAmount: data.maxPurchaseAmount || null,
         autoFulfill: data.autoFulfill ?? true,
+        instructions: data.instructions || null,
         termsAndConditions: data.termsAndConditions || null,
       };
 
@@ -721,6 +724,22 @@ export function ListingFormDialog({
                   Automatically send gift card codes to customers upon purchase
                 </p>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="instructions" className="text-sm font-medium">
+                Redemption Instructions
+              </Label>
+              <Textarea
+                id="instructions"
+                placeholder="Custom instructions for redeeming this gift card..."
+                {...register("instructions")}
+                disabled={isSaving}
+                className="min-h-[100px] resize-none"
+              />
+              <p className="text-xs text-muted-foreground">
+                These instructions will be included in the fulfillment email (max 2000 characters)
+              </p>
             </div>
 
             <div className="space-y-2">

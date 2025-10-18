@@ -139,6 +139,7 @@ export interface CompanyMembership {
   // Invitation tracking
   invitedBy: string | null; // User ID
   invitedAt: Date | null;
+  invitationEmail: string | null; // Email of person invited (for pending)
   acceptedAt: Date | null;
   invitationToken: string | null;
   invitationExpiresAt: Date | null;
@@ -263,6 +264,7 @@ export interface Listing {
   minPurchaseAmount: number | null;
   maxPurchaseAmount: number | null;
   autoFulfill: boolean; // Auto-send code on purchase
+  instructions: string | null; // Custom instructions for gift card redemption
   termsAndConditions: string | null;
 
   // Metadata

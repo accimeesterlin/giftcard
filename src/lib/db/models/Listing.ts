@@ -149,6 +149,11 @@ const ListingSchema = new Schema<ListingDocument>(
       type: Boolean,
       default: true,
     },
+    instructions: {
+      type: String,
+      default: null,
+      maxlength: 2000,
+    },
     termsAndConditions: {
       type: String,
       default: null,

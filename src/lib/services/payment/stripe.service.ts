@@ -8,6 +8,7 @@ import connectDB from "@/lib/db/mongodb";
 import PaymentProviderConfig from "@/lib/db/models/PaymentProviderConfig";
 import PaymentIntent from "@/lib/db/models/PaymentIntent";
 import Order from "@/lib/db/models/Order";
+import Listing from "@/lib/db/models/Listing";
 import { Errors } from "@/lib/errors";
 
 // Stripe SDK would be imported in production
@@ -235,9 +236,26 @@ export class StripeService {
       order.paidAt = new Date();
       await order.save();
 
-      // Trigger auto-fulfillment if enabled
-      // This would be handled by OrderService.fulfillOrder()
-      console.log(`Order ${order.id} payment succeeded. Ready for fulfillment.`);
+      // Get listing to check autoFulfill setting
+      const listing = await Listing.findOne({
+        id: order.listingId,
+        companyId: order.companyId,
+      });
+
+      // Auto-fulfill if enabled
+      if (listing && listing.autoFulfill) {
+        try {
+          // Use dynamic import to avoid circular dependency
+          const { OrderService } = await import("@/lib/services/order.service");
+          await OrderService.fulfillOrder(order.companyId, order.id, "system");
+          console.log(`✅ Order ${order.id} auto-fulfilled and email sent`);
+        } catch (fulfillError) {
+          console.error(`❌ Failed to auto-fulfill order ${order.id}:`, fulfillError);
+          // Don't throw error - payment was successful, fulfillment can be done manually
+        }
+      } else {
+        console.log(`Order ${order.id} payment succeeded. Ready for manual fulfillment.`);
+      }
     }
   }
 

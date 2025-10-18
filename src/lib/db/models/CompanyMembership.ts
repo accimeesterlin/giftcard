@@ -47,6 +47,12 @@ const CompanyMembershipSchema = new Schema<CompanyMembershipDocument>(
       type: Date,
       default: null,
     },
+    invitationEmail: {
+      type: String,
+      default: null,
+      lowercase: true,
+      trim: true,
+    },
     acceptedAt: {
       type: Date,
       default: null,

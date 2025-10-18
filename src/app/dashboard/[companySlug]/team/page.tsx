@@ -52,7 +52,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Loader2, UserPlus, MoreHorizontal, Mail, Trash2, Shield } from "lucide-react";
+import { Loader2, UserPlus, MoreHorizontal, Mail, Trash2, Shield, RefreshCw, X, Clock } from "lucide-react";
 import { format } from "date-fns";
 
 const inviteSchema = z.object({
@@ -72,6 +72,8 @@ interface Member {
     email: string;
   };
   invitedAt: Date;
+  invitationEmail: string | null;
+  invitationExpiresAt: Date | null;
   acceptedAt: Date | null;
 }
 
@@ -86,6 +88,9 @@ export default function TeamManagementPage() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<string | null>(null);
+  const [isRevokeDialogOpen, setIsRevokeDialogOpen] = useState(false);
+  const [memberToRevoke, setMemberToRevoke] = useState<Member | null>(null);
+  const [isResending, setIsResending] = useState<string | null>(null);
 
   const {
     register,
@@ -188,6 +193,62 @@ export default function TeamManagementPage() {
     } finally {
       setIsRemoveDialogOpen(false);
       setMemberToRemove(null);
+    }
+  };
+
+  const handleResendInvitation = async (memberId: string) => {
+    if (!company) return;
+
+    setIsResending(memberId);
+    try {
+      const response = await fetch(`/api/v1/companies/${company.id}/members/${memberId}/resend`, {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        setMessage({ type: "success", text: "Invitation resent successfully" });
+      } else {
+        const result = await response.json();
+        throw new Error(result.error?.message || "Failed to resend invitation");
+      }
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text: error instanceof Error ? error.message : "Failed to resend invitation",
+      });
+    } finally {
+      setIsResending(null);
+    }
+  };
+
+  const openRevokeDialog = (member: Member) => {
+    setMemberToRevoke(member);
+    setIsRevokeDialogOpen(true);
+  };
+
+  const handleRevokeInvitation = async () => {
+    if (!company || !memberToRevoke) return;
+
+    try {
+      const response = await fetch(`/api/v1/companies/${company.id}/members/${memberToRevoke.id}/revoke`, {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        setMessage({ type: "success", text: "Invitation revoked successfully" });
+        fetchCompanyAndMembers();
+      } else {
+        const result = await response.json();
+        throw new Error(result.error?.message || "Failed to revoke invitation");
+      }
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text: error instanceof Error ? error.message : "Failed to revoke invitation",
+      });
+    } finally {
+      setIsRevokeDialogOpen(false);
+      setMemberToRevoke(null);
     }
   };
 
@@ -356,7 +417,7 @@ export default function TeamManagementPage() {
                           {member.user?.name || "Pending User"}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {member.user?.email || "Invitation sent"}
+                          {member.user?.email || member.invitationEmail || "Invitation sent"}
                         </div>
                       </div>
                     </TableCell>
@@ -365,7 +426,17 @@ export default function TeamManagementPage() {
                         {member.role}
                       </Badge>
                     </TableCell>
-                    <TableCell>{getStatusBadge(member.status)}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        {getStatusBadge(member.status)}
+                        {member.status === "pending" && member.invitationExpiresAt && (
+                          <div className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            Expires {format(new Date(member.invitationExpiresAt), "MMM d")}
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {member.acceptedAt
                         ? format(new Date(member.acceptedAt), "MMM d, yyyy")
@@ -382,13 +453,41 @@ export default function TeamManagementPage() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => openRemoveDialog(member.userId)}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Remove Member
-                            </DropdownMenuItem>
+                            {member.status === "pending" ? (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => handleResendInvitation(member.id)}
+                                  disabled={isResending === member.id}
+                                >
+                                  {isResending === member.id ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Resending...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <RefreshCw className="mr-2 h-4 w-4" />
+                                      Resend Invitation
+                                    </>
+                                  )}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => openRevokeDialog(member)}
+                                  className="text-destructive"
+                                >
+                                  <X className="mr-2 h-4 w-4" />
+                                  Revoke Invitation
+                                </DropdownMenuItem>
+                              </>
+                            ) : (
+                              <DropdownMenuItem
+                                onClick={() => openRemoveDialog(member.userId)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Remove Member
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       )}
@@ -418,6 +517,29 @@ export default function TeamManagementPage() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Remove Member
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Revoke Invitation Confirmation Dialog */}
+      <AlertDialog open={isRevokeDialogOpen} onOpenChange={setIsRevokeDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revoke Invitation</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to revoke the invitation to{" "}
+              <span className="font-medium">{memberToRevoke?.invitationEmail}</span>? They will
+              no longer be able to accept this invitation.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRevokeInvitation}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Revoke Invitation
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
