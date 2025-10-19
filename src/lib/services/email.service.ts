@@ -122,7 +122,20 @@ export class EmailService {
       );
 
       if (!integration) {
-        console.warn("⚠️ No primary email integration found, falling back to SMTP");
+        console.warn("⚠️ No primary email integration found");
+
+        // Check for ZeptoMail environment variables as first fallback
+        if (process.env.ZEPTOMAIL_API_KEY) {
+          console.log("📧 Using ZeptoMail from environment variables");
+          const zeptoConfig = {
+            apiKey: process.env.ZEPTOMAIL_API_KEY,
+            fromEmail: process.env.ZEPTOMAIL_FROM_EMAIL || "noreply@example.com",
+            fromName: process.env.ZEPTOMAIL_FROM_NAME || "Seller Gift",
+          };
+          return await this.sendViaZeptoMail(zeptoConfig, to, subject, html);
+        }
+
+        console.warn("⚠️ Falling back to SMTP");
         return await this.send({ to, subject, html });
       }
 
@@ -300,8 +313,21 @@ export class EmailService {
 
   /**
    * Send an email using SMTP (fallback method)
+   * Checks for ZeptoMail environment variables first before using SMTP
    */
   static async send({ to, subject, html, text }: SendEmailOptions) {
+    // Try ZeptoMail from environment variables first
+    if (process.env.ZEPTOMAIL_API_KEY) {
+      console.log("📧 Using ZeptoMail from environment variables");
+      const zeptoConfig = {
+        apiKey: process.env.ZEPTOMAIL_API_KEY,
+        fromEmail: process.env.ZEPTOMAIL_FROM_EMAIL || "noreply@example.com",
+        fromName: process.env.ZEPTOMAIL_FROM_NAME || "Seller Gift",
+      };
+      return await this.sendViaZeptoMail(zeptoConfig, to, subject, html);
+    }
+
+    // Fall back to SMTP
     const transport = getTransporter();
 
     try {

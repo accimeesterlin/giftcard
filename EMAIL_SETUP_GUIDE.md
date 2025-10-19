@@ -17,12 +17,15 @@ All invitation emails now use your **company's email integration** (ZeptoMail, S
 
 ## Quick Setup (Choose One)
 
-You have **2 options** to send emails:
+You have **3 options** to send emails:
 
 ### Option 1: Use Email Integration (Recommended) ⭐
 Configure an email provider in your company settings dashboard.
 
-### Option 2: Use SMTP Fallback
+### Option 2: Use ZeptoMail from Environment Variables (New!)
+Add ZeptoMail credentials to `.env.local` for automatic email sending without database configuration.
+
+### Option 3: Use SMTP Fallback
 Add SMTP credentials to `.env.local` for a basic email setup.
 
 ---
@@ -66,9 +69,61 @@ Choose one of these providers:
 
 ---
 
-## Option 2: SMTP Fallback Setup
+## Option 2: ZeptoMail from Environment Variables (New!)
 
-If you don't want to use an integration, add these to your `.env.local`:
+This is the **easiest and fastest** way to get email working. No database configuration needed!
+
+### Step 1: Get Your ZeptoMail Credentials
+1. Sign up at [https://www.zoho.com/zeptomail/](https://www.zoho.com/zeptomail/)
+2. Verify your domain (or use Zoho's test domain for development)
+3. Get your API key from the ZeptoMail dashboard
+4. Note your verified sender email address
+
+### Step 2: Add to `.env.local`
+
+Open your `.env.local` file and add:
+
+```bash
+# ZeptoMail Configuration
+ZEPTOMAIL_API_KEY=your_actual_api_key_here
+ZEPTOMAIL_FROM_EMAIL=noreply@yourdomain.com
+ZEPTOMAIL_FROM_NAME=Seller Gift
+```
+
+### Step 3: Restart Your Dev Server
+
+```bash
+# Stop your server (Ctrl+C) and restart
+yarn dev
+```
+
+That's it! 🎉 Your emails will now be sent via ZeptoMail automatically.
+
+### How It Works
+
+The email service will now follow this priority:
+
+1. **Company Email Integration** (if configured in database)
+   ↓
+2. **ZeptoMail from `.env.local`** (if `ZEPTOMAIL_API_KEY` is set) ⭐ YOU ARE HERE
+   ↓
+3. **SMTP** (if `SMTP_HOST` is set)
+   ↓
+4. **Console Logging** (development fallback)
+
+### Benefits of This Approach
+
+✅ **No Database Setup Required** - Just environment variables
+✅ **Works Immediately** - No need to configure integrations in the UI
+✅ **Per-Company Override** - Companies can still add their own email integrations
+✅ **Production Ready** - ZeptoMail has high deliverability rates
+✅ **Cost Effective** - ZeptoMail has generous free tier
+
+---
+
+## Option 3: SMTP Fallback Setup
+
+If you don't want to use ZeptoMail or an integration, add these to your `.env.local`:
 
 ```bash
 # SMTP Configuration (Fallback)
@@ -99,10 +154,18 @@ SMTP_FROM="Your Company <noreply@yourcompany.com>"
 Team Invitation Sent
         ↓
 1. Check for company's primary email integration
-   ├─ Found: Use ZeptoMail/SendGrid/Resend
-   └─ Not found: Use SMTP fallback
+   ├─ Found: Use ZeptoMail/SendGrid/Resend (from database)
+   └─ Not found: ↓
         ↓
-2. If integration/SMTP fails → Log error and throw
+2. Check for ZEPTOMAIL_API_KEY in environment
+   ├─ Found: Use ZeptoMail (from .env.local) ⭐ NEW!
+   └─ Not found: ↓
+        ↓
+3. Check for SMTP configuration in environment
+   ├─ Found: Use SMTP
+   └─ Not found: Log to console (dev only)
+        ↓
+4. If any method fails → Log error and throw
 ```
 
 ### Email Methods Updated
@@ -287,14 +350,24 @@ Methods you can customize:
 - ❌ No integration support
 
 **After Fix:**
-- ✅ Uses company email integration
+- ✅ Uses company email integration (database)
+- ✅ **NEW: Falls back to ZeptoMail from environment variables** ⭐
 - ✅ Falls back to SMTP if configured
 - ✅ Proper error handling
 - ✅ Rate limiting
 - ✅ Security hardened
 
+**Email Priority (Cascading Fallback):**
+1. Company email integration in database (per-company settings)
+2. **ZeptoMail from `.env.local` (global fallback)** ⭐ NEW!
+3. SMTP from `.env.local` (traditional fallback)
+4. Console logging (development only)
+
 **Next Steps:**
-1. Choose Option 1 (Integration) or Option 2 (SMTP)
+1. Choose one option:
+   - **Option 1**: Configure per-company email integration in dashboard (most flexible)
+   - **Option 2**: Add ZeptoMail credentials to `.env.local` (quickest) ⭐ RECOMMENDED
+   - **Option 3**: Add SMTP credentials to `.env.local` (traditional)
 2. Configure your chosen method
 3. Send a test invitation
 4. Verify email delivery

@@ -484,12 +484,12 @@ export default async function Home() {
               <h3 className="font-semibold text-sm sm:text-base mb-3 sm:mb-4">Legal</h3>
               <ul className="space-y-2 text-xs sm:text-sm text-muted-foreground">
                 <li>
-                  <Link href="/dashboard" className="hover:text-primary">
+                  <Link href="/privacy" className="hover:text-primary">
                     Privacy Policy
                   </Link>
                 </li>
                 <li>
-                  <Link href="/dashboard" className="hover:text-primary">
+                  <Link href="/terms" className="hover:text-primary">
                     Terms of Service
                   </Link>
                 </li>
