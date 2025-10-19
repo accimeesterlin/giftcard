@@ -6,7 +6,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle, Loader2, XCircle, ArrowLeft, Copy, Eye, EyeOff, Mail, ShoppingBag, CreditCard, Star } from "lucide-react";
+import {
+  CheckCircle,
+  Loader2,
+  XCircle,
+  ArrowLeft,
+  Copy,
+  Eye,
+  EyeOff,
+  Mail,
+  ShoppingBag,
+  CreditCard,
+  Star,
+} from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 
@@ -49,7 +61,9 @@ export default function PaymentSuccessPage() {
 
   const [company, setCompany] = useState<Company | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [verificationStatus, setVerificationStatus] = useState<"pending" | "success" | "error">("pending");
+  const [verificationStatus, setVerificationStatus] = useState<"pending" | "success" | "error">(
+    "pending"
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
   const [showCodes, setShowCodes] = useState<{ [key: number]: boolean }>({});
@@ -94,20 +108,17 @@ export default function PaymentSuccessPage() {
 
   const verifyPayment = async () => {
     try {
-      const response = await fetch(
-        `/api/v1/marketplace/${companySlug}/payments/verify`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            orderId,
-            token,
-            status,
-          }),
-        }
-      );
+      const response = await fetch(`/api/v1/marketplace/${companySlug}/payments/verify`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          orderId,
+          token,
+          status,
+        }),
+      });
 
       if (!response.ok) {
         const result = await response.json();
@@ -150,7 +161,7 @@ export default function PaymentSuccessPage() {
   };
 
   const toggleCodeVisibility = (index: number) => {
-    setShowCodes(prev => ({ ...prev, [index]: !prev[index] }));
+    setShowCodes((prev) => ({ ...prev, [index]: !prev[index] }));
   };
 
   const copyCode = async (code: string, pin: string | null) => {
@@ -182,10 +193,16 @@ export default function PaymentSuccessPage() {
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
           <div className="flex items-center gap-2 sm:gap-3">
             {company?.logo && (
-              <img src={company.logo} alt={company.displayName} className="h-8 w-8 sm:h-10 sm:w-10 rounded flex-shrink-0" />
+              <img
+                src={company.logo}
+                alt={company.displayName}
+                className="h-8 w-8 sm:h-10 sm:w-10 rounded flex-shrink-0"
+              />
             )}
             <div className="min-w-0">
-              <h2 className="text-sm sm:text-base font-semibold truncate">{company?.displayName || "sellergift"}</h2>
+              <h2 className="text-sm sm:text-base font-semibold truncate">
+                {company?.displayName || "Seller Gift"}
+              </h2>
               <p className="text-xs sm:text-sm text-muted-foreground">Payment Confirmation</p>
             </div>
           </div>
@@ -228,8 +245,12 @@ export default function PaymentSuccessPage() {
                       <ShoppingBag className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground flex-shrink-0" />
                       <div className="min-w-0">
                         <p className="text-xs sm:text-sm text-muted-foreground">Product</p>
-                        <p className="text-sm sm:text-base font-semibold truncate">{orderDetails.listing.title}</p>
-                        <p className="text-xs text-muted-foreground">{orderDetails.listing.brand}</p>
+                        <p className="text-sm sm:text-base font-semibold truncate">
+                          {orderDetails.listing.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {orderDetails.listing.brand}
+                        </p>
                       </div>
                     </div>
                     <Badge className="flex-shrink-0">
@@ -262,7 +283,9 @@ export default function PaymentSuccessPage() {
                         <p className="text-sm font-medium truncate">
                           {orderDetails.customerName || "Anonymous"}
                         </p>
-                        <p className="text-xs text-muted-foreground truncate">{orderDetails.customerEmail}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {orderDetails.customerEmail}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -276,7 +299,12 @@ export default function PaymentSuccessPage() {
                     </div>
                     <div className="text-right">
                       <p>Date</p>
-                      <p>{format(new Date(orderDetails.paidAt || orderDetails.createdAt), "MMM d, yyyy h:mm a")}</p>
+                      <p>
+                        {format(
+                          new Date(orderDetails.paidAt || orderDetails.createdAt),
+                          "MMM d, yyyy h:mm a"
+                        )}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -288,7 +316,9 @@ export default function PaymentSuccessPage() {
                       <CreditCard className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                       <div>
                         <h3 className="text-sm sm:text-base font-semibold">Your Gift Card Codes</h3>
-                        <p className="text-xs text-muted-foreground">Save these codes - they won't be shown again</p>
+                        <p className="text-xs text-muted-foreground">
+                          Save these codes - they won't be shown again
+                        </p>
                       </div>
                     </div>
 
@@ -365,7 +395,8 @@ export default function PaymentSuccessPage() {
                   <div className="flex items-start gap-2">
                     <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                     <p className="text-blue-900 dark:text-blue-100">
-                      A copy of these codes has been sent to <strong>{orderDetails.customerEmail}</strong>
+                      A copy of these codes has been sent to{" "}
+                      <strong>{orderDetails.customerEmail}</strong>
                     </p>
                   </div>
                   <div className="flex items-start gap-2">
@@ -386,15 +417,13 @@ export default function PaymentSuccessPage() {
                 <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border border-purple-200 dark:border-purple-800 p-4 sm:p-6 rounded-lg text-center space-y-3">
                   <div className="flex justify-center gap-1 mb-2">
                     {[1, 2, 3, 4, 5].map((star) => (
-                      <Star
-                        key={star}
-                        className="h-5 w-5 fill-yellow-400 text-yellow-400"
-                      />
+                      <Star key={star} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
                     ))}
                   </div>
                   <h3 className="text-base sm:text-lg font-semibold">How was your experience?</h3>
                   <p className="text-xs sm:text-sm text-muted-foreground">
-                    We've sent you an email with a link to leave a review. Your feedback helps others make informed decisions!
+                    We've sent you an email with a link to leave a review. Your feedback helps
+                    others make informed decisions!
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Check your inbox at <strong>{orderDetails.customerEmail}</strong>

@@ -14,30 +14,30 @@ import { escapeHtml } from "@/lib/utils/html-escape";
 let transporter: Transporter | null = null;
 
 // Encryption helpers
-const ALGORITHM = 'aes-256-gcm';
+const ALGORITHM = "aes-256-gcm";
 
 function getEncryptionKey(): Buffer {
   const ENCRYPTION_KEY = process.env.INTEGRATION_ENCRYPTION_KEY;
 
   if (!ENCRYPTION_KEY) {
-    throw new Error('INTEGRATION_ENCRYPTION_KEY must be set in environment variables');
+    throw new Error("INTEGRATION_ENCRYPTION_KEY must be set in environment variables");
   }
 
-  return crypto.createHash('sha256').update(ENCRYPTION_KEY).digest();
+  return crypto.createHash("sha256").update(ENCRYPTION_KEY).digest();
 }
 
 function decrypt(encryptedText: string): string {
-  const parts = encryptedText.split(':');
-  const iv = Buffer.from(parts[0], 'hex');
-  const authTag = Buffer.from(parts[1], 'hex');
+  const parts = encryptedText.split(":");
+  const iv = Buffer.from(parts[0], "hex");
+  const authTag = Buffer.from(parts[1], "hex");
   const encrypted = parts[2];
 
   const key = getEncryptionKey();
   const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
   decipher.setAuthTag(authTag);
 
-  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
+  let decrypted = decipher.update(encrypted, "hex", "utf8");
+  decrypted += decipher.final("utf8");
 
   return decrypted;
 }
@@ -95,7 +95,9 @@ export class EmailService {
     subject: string;
     html: string;
   }) {
-    console.log(`📧 sendViaIntegration called for company: ${companyId}, to: ${to}, subject: ${subject}`);
+    console.log(
+      `📧 sendViaIntegration called for company: ${companyId}, to: ${to}, subject: ${subject}`
+    );
     await connectDB();
 
     try {
@@ -107,12 +109,17 @@ export class EmailService {
         enabled: true,
       });
 
-      console.log(`📧 Integration found:`, integration ? {
-        id: integration.id,
-        provider: integration.provider,
-        primary: integration.primary,
-        enabled: integration.enabled
-      } : 'null');
+      console.log(
+        `📧 Integration found:`,
+        integration
+          ? {
+              id: integration.id,
+              provider: integration.provider,
+              primary: integration.primary,
+              enabled: integration.enabled,
+            }
+          : "null"
+      );
 
       if (!integration) {
         console.warn("⚠️ No primary email integration found, falling back to SMTP");
@@ -122,11 +129,13 @@ export class EmailService {
       // Decrypt sensitive config fields
       const decryptedConfig: Record<string, string> = {};
       for (const [key, value] of Object.entries(integration.config)) {
-        if (typeof value === 'string') {
-          if (key.toLowerCase().includes('key') ||
-              key.toLowerCase().includes('token') ||
-              key.toLowerCase().includes('secret') ||
-              key.toLowerCase().includes('password')) {
+        if (typeof value === "string") {
+          if (
+            key.toLowerCase().includes("key") ||
+            key.toLowerCase().includes("token") ||
+            key.toLowerCase().includes("secret") ||
+            key.toLowerCase().includes("password")
+          ) {
             try {
               decryptedConfig[key] = decrypt(value as string);
             } catch (e) {
@@ -179,7 +188,7 @@ export class EmailService {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": config.apiKey,
+        Authorization: config.apiKey,
       },
       body: JSON.stringify({
         from: {
@@ -204,7 +213,11 @@ export class EmailService {
     }
 
     const data = await response.json();
-    console.log("📧 Email sent via ZeptoMail:", { to, subject, messageId: data.data?.[0]?.message_id });
+    console.log("📧 Email sent via ZeptoMail:", {
+      to,
+      subject,
+      messageId: data.data?.[0]?.message_id,
+    });
     return data;
   }
 
@@ -221,7 +234,7 @@ export class EmailService {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${config.apiKey}`,
+        Authorization: `Bearer ${config.apiKey}`,
       },
       body: JSON.stringify({
         personalizations: [
@@ -265,7 +278,7 @@ export class EmailService {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${config.apiKey}`,
+        Authorization: `Bearer ${config.apiKey}`,
       },
       body: JSON.stringify({
         from: `${config.fromName} <${config.fromEmail}>`,
@@ -293,7 +306,7 @@ export class EmailService {
 
     try {
       const info = await transport.sendMail({
-        from: process.env.SMTP_FROM || '"GiftCard Marketplace" <noreply@example.com>',
+        from: process.env.SMTP_FROM || '"Seller Giftplace" <noreply@example.com>',
         to,
         subject,
         html,
@@ -366,7 +379,7 @@ export class EmailService {
             </div>
 
             <div class="content">
-              <p><strong>${escapedInviterName}</strong> has invited you to join <strong>${escapedCompanyName}</strong> on GiftCard Marketplace.</p>
+              <p><strong>${escapedInviterName}</strong> has invited you to join <strong>${escapedCompanyName}</strong> on Seller Giftplace.</p>
 
               <div class="info-box">
                 <p style="margin: 0;"><strong>Your role:</strong> <span class="role-badge">${escapedRole}</span></p>
@@ -387,7 +400,7 @@ export class EmailService {
             </div>
 
             <div class="footer">
-              <p>This is an automated email from GiftCard Marketplace.</p>
+              <p>This is an automated email from Seller Giftplace.</p>
               <p>If you have any questions, please contact the person who invited you.</p>
             </div>
           </div>
@@ -410,8 +423,7 @@ export class EmailService {
         "<li>Edit company settings</li><li>Manage team members</li><li>Manage listings and orders</li>",
       manager:
         "<li>Create and manage listings</li><li>Manage inventory and orders</li><li>View analytics</li>",
-      agent:
-        "<li>Fulfill orders</li><li>Provide customer support</li><li>View listings</li>",
+      agent: "<li>Fulfill orders</li><li>Provide customer support</li><li>View listings</li>",
       viewer: "<li>View company data</li><li>Read-only access</li>",
     };
 
@@ -451,7 +463,7 @@ export class EmailService {
             <p>You will no longer be able to access this company's data or perform any actions on their behalf.</p>
             <p>If you believe this was done in error, please contact the company administrator.</p>
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
-            <p style="color: #6b7280; font-size: 14px;">GiftCard Marketplace</p>
+            <p style="color: #6b7280; font-size: 14px;">Seller Giftplace</p>
           </div>
         </body>
       </html>
@@ -522,7 +534,7 @@ export class EmailService {
             </div>
 
             <div class="footer">
-              <p>This is an automated email from GiftCard Marketplace.</p>
+              <p>This is an automated email from Seller Giftplace.</p>
             </div>
           </div>
         </body>
@@ -599,7 +611,7 @@ export class EmailService {
             </div>
 
             <div class="footer">
-              <p>This is an automated email from GiftCard Marketplace.</p>
+              <p>This is an automated email from Seller Giftplace.</p>
             </div>
           </div>
         </body>

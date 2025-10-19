@@ -6,7 +6,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Loader2, ShoppingCart, Search, Tag, ChevronLeft, ChevronRight, Plus, Filter, Eye } from "lucide-react";
+import {
+  Loader2,
+  ShoppingCart,
+  Search,
+  Tag,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Filter,
+  Eye,
+} from "lucide-react";
 import Link from "next/link";
 import { CartProvider, useCart } from "@/contexts/CartContext";
 import { CartSheet } from "@/components/cart-sheet";
@@ -39,6 +49,10 @@ interface Listing {
   imageUrl: string | null;
   brandLogoUrl: string | null;
   totalStock: number;
+  reviewSummary?: {
+    averageRating: number;
+    reviewCount: number;
+  };
 }
 
 function MarketplaceHomeContent() {
@@ -71,9 +85,7 @@ function MarketplaceHomeContent() {
         setCompany(companyData.data);
 
         // Get listings for this company (public endpoint)
-        const listingsResponse = await fetch(
-          `/api/v1/marketplace/${companySlug}/listings`
-        );
+        const listingsResponse = await fetch(`/api/v1/marketplace/${companySlug}/listings`);
         if (listingsResponse.ok) {
           const listingsData = await listingsResponse.json();
           // Show all active listings
@@ -177,11 +189,15 @@ function MarketplaceHomeContent() {
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
               {company.logo && (
-                <img src={company.logo} alt={company.displayName} className="h-8 w-8 sm:h-12 sm:w-12 rounded flex-shrink-0" />
+                <img
+                  src={company.logo}
+                  alt={company.displayName}
+                  className="h-8 w-8 sm:h-12 sm:w-12 rounded flex-shrink-0"
+                />
               )}
               <div className="min-w-0 flex-1">
                 <h1 className="text-lg sm:text-2xl font-bold truncate">{company.displayName}</h1>
-                <p className="text-xs sm:text-sm text-muted-foreground">sellergift</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Seller Gift</p>
               </div>
             </div>
             <CartSheet />
@@ -216,9 +232,17 @@ function MarketplaceHomeContent() {
             >
               <Filter className="h-4 w-4" />
               <span className="hidden sm:inline">Filters</span>
-              {(selectedCategory !== "all" || selectedBrand !== "all" || selectedCardType !== "all") && (
+              {(selectedCategory !== "all" ||
+                selectedBrand !== "all" ||
+                selectedCardType !== "all") && (
                 <Badge variant="secondary" className="ml-1">
-                  {[selectedCategory !== "all", selectedBrand !== "all", selectedCardType !== "all"].filter(Boolean).length}
+                  {
+                    [
+                      selectedCategory !== "all",
+                      selectedBrand !== "all",
+                      selectedCardType !== "all",
+                    ].filter(Boolean).length
+                  }
                 </Badge>
               )}
             </Button>
@@ -269,7 +293,10 @@ function MarketplaceHomeContent() {
                   </SelectContent>
                 </Select>
 
-                <Select value={itemsPerPage.toString()} onValueChange={(v) => setItemsPerPage(Number(v))}>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={(v) => setItemsPerPage(Number(v))}
+                >
                   <SelectTrigger className="w-[140px] h-9">
                     <SelectValue placeholder="Show" />
                   </SelectTrigger>
@@ -317,7 +344,8 @@ function MarketplaceHomeContent() {
             {/* Results Info */}
             <div className="flex justify-between items-center mb-4 text-sm text-muted-foreground">
               <span>
-                Showing {startIndex + 1}-{Math.min(endIndex, filteredListings.length)} of {filteredListings.length} results
+                Showing {startIndex + 1}-{Math.min(endIndex, filteredListings.length)} of{" "}
+                {filteredListings.length} results
               </span>
             </div>
 
@@ -334,7 +362,9 @@ function MarketplaceHomeContent() {
                           </CardTitle>
                         </Link>
                         <div className="flex items-center gap-1 sm:gap-2 mb-2 flex-wrap">
-                          <Badge variant="outline" className="text-xs">{listing.brand}</Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {listing.brand}
+                          </Badge>
                           <Badge variant="outline" className="text-xs">
                             {listing.cardType === "digital" ? "Digital" : "Physical"}
                           </Badge>
@@ -366,12 +396,16 @@ function MarketplaceHomeContent() {
                       )}
 
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1 sm:mb-2">Select denomination:</p>
+                        <p className="text-xs text-muted-foreground mb-1 sm:mb-2">
+                          Select denomination:
+                        </p>
                         <div className="flex flex-wrap gap-1 sm:gap-2">
                           {listing.denominations.map((denom) => (
                             <Button
                               key={denom}
-                              variant={selectedDenominations[listing.id] === denom ? "default" : "outline"}
+                              variant={
+                                selectedDenominations[listing.id] === denom ? "default" : "outline"
+                              }
                               size="sm"
                               className="h-7 px-2 text-xs"
                               onClick={() =>

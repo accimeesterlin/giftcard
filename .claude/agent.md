@@ -1,4 +1,4 @@
-# AGENTS.md  GiftCard Marketplace
+# AGENTS.md  Seller Giftplace
 
 > **Purpose:** Make AI coding assistants (Claude Code, GitHub Copilot, Cursor, etc.) and human contributors follow the same rules. Treat this file as the single source of truth for patterns, naming, and quality gates.
 
@@ -39,7 +39,7 @@
   - Payment provider configs (Stripe account, PayPal merchant ID, crypto wallet, PGPay key)
   - Subscription tier (optional for SaaS model)
 - **Listing**: Belongs to one company; scoped by `companyId`.
-- **Inventory/Codes**: Scoped by listing ’ company.
+- **Inventory/Codes**: Scoped by listing ï¿½ company.
 - **Orders**: Reference `companyId` for commission/payout logic.
 
 ### Access Control
@@ -91,7 +91,7 @@
 ## 5) API Versioning Policy
 
 - **URL versioning**: `/api/v1/...` (public). Internal server components may call internal util functions without version.
-- **Breaking changes** ’ bump minor version (v2) and maintain v1 for deprecation window.
+- **Breaking changes** ï¿½ bump minor version (v2) and maintain v1 for deprecation window.
 - **Headers**: Return `X-API-Version: v1`; optional `Sunset` header when deprecating.
 - **Changelog**: Update `/docs/API_V1.md` with endpoints, request/response, error codes.
 
@@ -100,7 +100,6 @@
 ## 6) Payments Abstraction
 
 - Implement `PaymentService` interface:
-
   - `createIntent(orderId, amount, currency, provider)`
   - `captureOrConfirm(providerRef)`
   - `refund(providerRef, amount?)`
@@ -128,7 +127,6 @@
 - **E2E**: Playwright for checkout flows (Stripe/PayPal sandbox), code reveal, and Reloadly stub.
 - **Static**: ESLint (next, security, unicorn), Prettier. Typecheck CI must pass.
 - **PR Checklist** (required in description):
-
   - [ ] Added/updated Zod schemas
   - [ ] Tests added/updated
   - [ ] Docs updated (`/docs/*`)
@@ -150,7 +148,6 @@
 - `.env.example` must list all vars (e.g., `STRIPE_KEY`, `PAYPAL_CLIENT_ID`, `PGPAY_SECRET`, `CRYPTO_RPC`, `KMS_KEY_ID`).
 - `pnpm` preferred (or yarn). Node e 20.
 - Scripts:
-
   - `dev`, `build`, `lint`, `typecheck`, `test`, `test:e2e`, `prepare` (husky), `analyze` (bundle).
 
 ---
@@ -198,32 +195,32 @@ Review the diff against these gates:
 
 ### MultiTenant (Company) Endpoints
 
-- `POST /api/v1/companies` (seller auth) ’ create new company; caller becomes owner
-- `GET /api/v1/companies` (seller auth) ’ list companies user has access to
-- `GET /api/v1/companies/{companyId}` (seller auth) ’ get company details
-- `PATCH /api/v1/companies/{companyId}` (seller auth, role e admin) ’ update company settings
-- `POST /api/v1/companies/{companyId}/members` (seller auth, role = owner) ’ invite seller to company
-- `DELETE /api/v1/companies/{companyId}/members/{userId}` (seller auth, role = owner) ’ remove member
+- `POST /api/v1/companies` (seller auth) ï¿½ create new company; caller becomes owner
+- `GET /api/v1/companies` (seller auth) ï¿½ list companies user has access to
+- `GET /api/v1/companies/{companyId}` (seller auth) ï¿½ get company details
+- `PATCH /api/v1/companies/{companyId}` (seller auth, role e admin) ï¿½ update company settings
+- `POST /api/v1/companies/{companyId}/members` (seller auth, role = owner) ï¿½ invite seller to company
+- `DELETE /api/v1/companies/{companyId}/members/{userId}` (seller auth, role = owner) ï¿½ remove member
 
 ### Listings & Inventory (scoped by company)
 
-- `POST /api/v1/companies/{companyId}/listings` (seller auth, role e manager) ’ create listing
-- `GET /api/v1/companies/{companyId}/listings` (seller auth) ’ list company's listings
-- `PATCH /api/v1/companies/{companyId}/listings/{id}` (seller auth, role e manager) ’ update listing
-- `POST /api/v1/companies/{companyId}/listings/{id}/inventory` (seller auth, role e manager) ’ bulk codes (encrypted)
+- `POST /api/v1/companies/{companyId}/listings` (seller auth, role e manager) ï¿½ create listing
+- `GET /api/v1/companies/{companyId}/listings` (seller auth) ï¿½ list company's listings
+- `PATCH /api/v1/companies/{companyId}/listings/{id}` (seller auth, role e manager) ï¿½ update listing
+- `POST /api/v1/companies/{companyId}/listings/{id}/inventory` (seller auth, role e manager) ï¿½ bulk codes (encrypted)
 
 ### Buyer/Public Endpoints
 
-- `GET /api/v1/listings` ’ public; filter by company, brand, category; paginated
-- `GET /api/v1/listings/{id}` ’ public listing detail
-- `POST /api/v1/cart` ’ create cart from listing/qty (serverside)
-- `GET /api/v1/buyer/orders` (buyer auth) ’ list user orders
+- `GET /api/v1/listings` ï¿½ public; filter by company, brand, category; paginated
+- `GET /api/v1/listings/{id}` ï¿½ public listing detail
+- `POST /api/v1/cart` ï¿½ create cart from listing/qty (serverside)
+- `GET /api/v1/buyer/orders` (buyer auth) ï¿½ list user orders
 
 ### Payments & Orders
 
-- `POST /api/v1/payments/intent` ’ `{ provider, orderId }` ’ `{ clientSecret | approvalUrl | address }`
-- `POST /api/v1/orders/{id}/confirm` ’ finalize after provider approve/capture
-- `POST /api/v1/payments/{stripe|paypal|crypto|pgpay}/webhook` ’ signed; updates `PaymentEvent` + `Order`
+- `POST /api/v1/payments/intent` ï¿½ `{ provider, orderId }` ï¿½ `{ clientSecret | approvalUrl | address }`
+- `POST /api/v1/orders/{id}/confirm` ï¿½ finalize after provider approve/capture
+- `POST /api/v1/payments/{stripe|paypal|crypto|pgpay}/webhook` ï¿½ signed; updates `PaymentEvent` + `Order`
 
 _All endpoints must: (a) authenticate, (b) validate with Zod, (c) return problem+JSON on errors, (d) verify company access for scoped routes._
 
@@ -232,7 +229,7 @@ _All endpoints must: (a) authenticate, (b) validate with Zod, (c) return problem
 ## 13) Coding Patterns
 
 - **Service layer** in `lib/*` (pure TS): business logic, easy to test.
-- **Route handlers**: thin; parse ’ call service ’ map result ’ HTTP.
+- **Route handlers**: thin; parse ï¿½ call service ï¿½ map result ï¿½ HTTP.
 - **Adapters**: one file per provider (payments, Reloadly). Expose a minimal interface.
 - **Errors**: `AppError(code, httpStatus, message, details?)` only.
 - **Logging**: `logger.info({ event, orderId, provider })` JSON lines; never sensitive data.
@@ -242,7 +239,6 @@ _All endpoints must: (a) authenticate, (b) validate with Zod, (c) return problem
 ## 14) Playbooks (Claude quick macros)
 
 - **Generate a new API endpoint**
-
   1. Create `app/api/v1/<domain>/route.ts`
   2. Add Zod schema for body/query
   3. Call service in `lib/<domain>.ts`
@@ -250,7 +246,6 @@ _All endpoints must: (a) authenticate, (b) validate with Zod, (c) return problem
   5. Document in `/docs/API_V1.md`
 
 - **Add a payment provider**
-
   1. Implement adapter in `lib/payments/<provider>.ts`
   2. Add webhook route + signature verify
   3. Register in `PaymentService`

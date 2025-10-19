@@ -1,4 +1,4 @@
-# AGENTS.md — GiftCard Marketplace
+# AGENTS.md — Seller Giftplace
 
 > **Purpose:** Make AI coding assistants (Claude Code, GitHub Copilot, Cursor, etc.) and human contributors follow the same rules. Treat this file as the single source of truth for patterns, naming, and quality gates.
 
@@ -100,7 +100,6 @@
 ## 6) Payments Abstraction
 
 - Implement `PaymentService` interface:
-
   - `createIntent(orderId, amount, currency, provider)`
   - `captureOrConfirm(providerRef)`
   - `refund(providerRef, amount?)`
@@ -128,7 +127,6 @@
 - **E2E**: Playwright for checkout flows (Stripe/PayPal sandbox), code reveal, and Reloadly stub.
 - **Static**: ESLint (next, security, unicorn), Prettier. Type‑check CI must pass.
 - **PR Checklist** (required in description):
-
   - [ ] Added/updated Zod schemas
   - [ ] Tests added/updated
   - [ ] Docs updated (`/docs/*`)
@@ -150,7 +148,6 @@
 - `.env.example` must list all vars (e.g., `STRIPE_KEY`, `PAYPAL_CLIENT_ID`, `PGPAY_SECRET`, `CRYPTO_RPC`, `KMS_KEY_ID`).
 - `pnpm` preferred (or yarn). Node ≥ 20.
 - Scripts:
-
   - `dev`, `build`, `lint`, `typecheck`, `test`, `test:e2e`, `prepare` (husky), `analyze` (bundle).
 
 ---
@@ -242,7 +239,6 @@ _All endpoints must: (a) authenticate, (b) validate with Zod, (c) return problem
 ## 14) Playbooks (Claude quick macros)
 
 - **Generate a new API endpoint**
-
   1. Create `app/api/v1/<domain>/route.ts`
   2. Add Zod schema for body/query
   3. Call service in `lib/<domain>.ts`
@@ -250,7 +246,6 @@ _All endpoints must: (a) authenticate, (b) validate with Zod, (c) return problem
   5. Document in `/docs/API_V1.md`
 
 - **Add a payment provider**
-
   1. Implement adapter in `lib/payments/<provider>.ts`
   2. Add webhook route + signature verify
   3. Register in `PaymentService`

@@ -70,11 +70,7 @@ async function UserMenu({ user }: { user: { name: string | null; email: string }
   );
 }
 
-export default async function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
 
   if (!session || !session.user) {
@@ -88,7 +84,7 @@ export default async function DashboardLayout({
         <div className="container flex h-14 items-center px-2 sm:px-4">
           <div className="mr-2 sm:mr-4 flex">
             <Link href="/dashboard" className="mr-2 sm:mr-6 flex items-center space-x-2">
-              <span className="font-bold text-base sm:text-xl">GiftCard Market</span>
+              <span className="font-bold text-base sm:text-xl">Seller Gift</span>
             </Link>
           </div>
 
@@ -102,14 +98,12 @@ export default async function DashboardLayout({
       </header>
 
       {/* Main Content */}
-      <main className="flex-1">
-        {children}
-      </main>
+      <main className="flex-1">{children}</main>
 
       {/* Footer */}
       <footer className="border-t py-4">
         <div className="container px-2 sm:px-4 text-center text-xs sm:text-sm text-muted-foreground">
-          © {new Date().getFullYear()} GiftCard Marketplace. All rights reserved.
+          © {new Date().getFullYear()} Seller Giftplace. All rights reserved.
         </div>
       </footer>
     </div>

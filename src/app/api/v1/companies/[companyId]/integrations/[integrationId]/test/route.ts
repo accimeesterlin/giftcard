@@ -8,28 +8,29 @@ import { toAppError, Errors } from "@/lib/errors";
 import crypto from "crypto";
 
 // Encryption helpers (same as in main integration routes)
-const ENCRYPTION_KEY = process.env.INTEGRATION_ENCRYPTION_KEY || crypto.randomBytes(32).toString('base64');
-const ALGORITHM = 'aes-256-gcm';
+const ENCRYPTION_KEY =
+  process.env.INTEGRATION_ENCRYPTION_KEY || crypto.randomBytes(32).toString("base64");
+const ALGORITHM = "aes-256-gcm";
 
 function getEncryptionKey(): Buffer {
   if (!ENCRYPTION_KEY) {
-    throw new Error('INTEGRATION_ENCRYPTION_KEY must be set in environment variables');
+    throw new Error("INTEGRATION_ENCRYPTION_KEY must be set in environment variables");
   }
-  return crypto.createHash('sha256').update(ENCRYPTION_KEY).digest();
+  return crypto.createHash("sha256").update(ENCRYPTION_KEY).digest();
 }
 
 function decrypt(encryptedText: string): string {
-  const parts = encryptedText.split(':');
-  const iv = Buffer.from(parts[0], 'hex');
-  const authTag = Buffer.from(parts[1], 'hex');
+  const parts = encryptedText.split(":");
+  const iv = Buffer.from(parts[0], "hex");
+  const authTag = Buffer.from(parts[1], "hex");
   const encrypted = parts[2];
 
   const key = getEncryptionKey();
   const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
   decipher.setAuthTag(authTag);
 
-  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
+  let decrypted = decipher.update(encrypted, "hex", "utf8");
+  decrypted += decipher.final("utf8");
 
   return decrypted;
 }
@@ -108,9 +109,7 @@ export async function POST(
       {
         data: testResult,
         meta: {
-          message: testResult.success
-            ? "Integration test successful"
-            : "Integration test failed",
+          message: testResult.success ? "Integration test successful" : "Integration test failed",
         },
       },
       {
@@ -145,11 +144,13 @@ async function testEmailIntegration(integration: any, testEmail: string) {
     // Decrypt sensitive config fields
     const decryptedConfig: Record<string, string> = {};
     for (const [key, value] of Object.entries(config)) {
-      if (typeof value === 'string') {
-        if (key.toLowerCase().includes('key') ||
-            key.toLowerCase().includes('token') ||
-            key.toLowerCase().includes('secret') ||
-            key.toLowerCase().includes('password')) {
+      if (typeof value === "string") {
+        if (
+          key.toLowerCase().includes("key") ||
+          key.toLowerCase().includes("token") ||
+          key.toLowerCase().includes("secret") ||
+          key.toLowerCase().includes("password")
+        ) {
           try {
             decryptedConfig[key] = decrypt(value as string);
           } catch (e) {
@@ -219,13 +220,13 @@ async function sendTestEmailSendGrid(config: Record<string, string>, testEmail: 
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${config.apiKey}`,
+        Authorization: `Bearer ${config.apiKey}`,
       },
       body: JSON.stringify({
         personalizations: [
           {
             to: [{ email: testEmail }],
-            subject: "Test Email from GiftCard Marketplace",
+            subject: "Test Email from Seller Giftplace",
           },
         ],
         from: {
@@ -238,12 +239,12 @@ async function sendTestEmailSendGrid(config: Record<string, string>, testEmail: 
             value: `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <h2>Test Email Successful! 🎉</h2>
-                <p>This is a test email from your GiftCard Marketplace integration.</p>
+                <p>This is a test email from your Seller Giftplace integration.</p>
                 <p><strong>Provider:</strong> SendGrid</p>
                 <p><strong>From:</strong> ${config.fromName} (${config.fromEmail})</p>
                 <p>If you received this email, your integration is working correctly!</p>
                 <hr style="margin: 20px 0;" />
-                <p style="color: #666; font-size: 12px;">This is an automated test message from GiftCard Marketplace.</p>
+                <p style="color: #666; font-size: 12px;">This is an automated test message from Seller Giftplace.</p>
               </div>
             `,
           },
@@ -282,21 +283,21 @@ async function sendTestEmailResend(config: Record<string, string>, testEmail: st
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${config.apiKey}`,
+        Authorization: `Bearer ${config.apiKey}`,
       },
       body: JSON.stringify({
         from: `${config.fromName} <${config.fromEmail}>`,
         to: [testEmail],
-        subject: "Test Email from GiftCard Marketplace",
+        subject: "Test Email from Seller Giftplace",
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2>Test Email Successful! 🎉</h2>
-            <p>This is a test email from your GiftCard Marketplace integration.</p>
+            <p>This is a test email from your Seller Giftplace integration.</p>
             <p><strong>Provider:</strong> Resend</p>
             <p><strong>From:</strong> ${config.fromName} (${config.fromEmail})</p>
             <p>If you received this email, your integration is working correctly!</p>
             <hr style="margin: 20px 0;" />
-            <p style="color: #666; font-size: 12px;">This is an automated test message from GiftCard Marketplace.</p>
+            <p style="color: #666; font-size: 12px;">This is an automated test message from Seller Giftplace.</p>
           </div>
         `,
       }),
@@ -336,7 +337,7 @@ async function sendTestEmailZeptoMail(config: Record<string, string>, testEmail:
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": config.apiKey,
+        Authorization: config.apiKey,
       },
       body: JSON.stringify({
         from: {
@@ -350,16 +351,16 @@ async function sendTestEmailZeptoMail(config: Record<string, string>, testEmail:
             },
           },
         ],
-        subject: "Test Email from GiftCard Marketplace",
+        subject: "Test Email from Seller Giftplace",
         htmlbody: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2>Test Email Successful! 🎉</h2>
-            <p>This is a test email from your GiftCard Marketplace integration.</p>
+            <p>This is a test email from your Seller Giftplace integration.</p>
             <p><strong>Provider:</strong> ZeptoMail</p>
             <p><strong>From:</strong> ${config.fromName} (${config.fromEmail})</p>
             <p>If you received this email, your integration is working correctly!</p>
             <hr style="margin: 20px 0;" />
-            <p style="color: #666; font-size: 12px;">This is an automated test message from GiftCard Marketplace.</p>
+            <p style="color: #666; font-size: 12px;">This is an automated test message from Seller Giftplace.</p>
           </div>
         `,
       }),

@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { CartProvider, useCart } from "@/contexts/CartContext";
 import { CartSheet } from "@/components/cart-sheet";
+import { ListingSEO } from "@/components/listing-seo";
 import {
   ShoppingCart,
   Package,
@@ -30,6 +31,7 @@ import {
   Plus,
   ChevronLeft,
   Home,
+  Star,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -75,6 +77,16 @@ interface PaymentProvider {
   status: string;
 }
 
+interface Review {
+  id: string;
+  customerName: string | null;
+  customerEmail: string;
+  rating: number;
+  comment: string | null;
+  verified: boolean;
+  createdAt: string;
+}
+
 function MarketplaceListingContent() {
   const params = useParams();
   const companySlug = params.companySlug as string;
@@ -94,6 +106,8 @@ function MarketplaceListingContent() {
   const [customerFirstName, setCustomerFirstName] = useState("");
   const [customerLastName, setCustomerLastName] = useState("");
   const [showCustomerInfoDialog, setShowCustomerInfoDialog] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
 
   // Load saved customer info from localStorage on mount
   useEffect(() => {
@@ -130,6 +144,7 @@ function MarketplaceListingContent() {
 
   useEffect(() => {
     fetchData();
+    fetchReviews();
   }, [companySlug, listingId]);
 
   const fetchData = async () => {
@@ -141,9 +156,7 @@ function MarketplaceListingContent() {
         setCompany(companyData.data);
 
         // Get listing (public endpoint)
-        const listingResponse = await fetch(
-          `/api/v1/marketplace/${companySlug}/${listingId}`
-        );
+        const listingResponse = await fetch(`/api/v1/marketplace/${companySlug}/${listingId}`);
         if (listingResponse.ok) {
           const listingData = await listingResponse.json();
           setListing(listingData.data);
@@ -157,7 +170,9 @@ function MarketplaceListingContent() {
             setInventory(inventoryData.data);
 
             // Auto-select first available denomination
-            const firstAvailable = inventoryData.data.find((d: DenominationAvailability) => d.inStock);
+            const firstAvailable = inventoryData.data.find(
+              (d: DenominationAvailability) => d.inStock
+            );
             if (firstAvailable) {
               setSelectedDenomination(firstAvailable.denomination);
             } else if (listingData.data.denominations.length > 0) {
@@ -169,9 +184,7 @@ function MarketplaceListingContent() {
 
         // Get payment providers (public endpoint)
         console.log("[Marketplace Page] Fetching payment providers for:", companySlug);
-        const providersResponse = await fetch(
-          `/api/v1/marketplace/${companySlug}/payments`
-        );
+        const providersResponse = await fetch(`/api/v1/marketplace/${companySlug}/payments`);
         console.log("[Marketplace Page] Providers response status:", providersResponse.status);
 
         if (providersResponse.ok) {
@@ -192,6 +205,21 @@ function MarketplaceListingContent() {
       console.error("Failed to fetch data:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchReviews = async () => {
+    setReviewsLoading(true);
+    try {
+      const response = await fetch(`/api/v1/reviews/${listingId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setReviews(data.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch reviews:", error);
+    } finally {
+      setReviewsLoading(false);
     }
   };
 
@@ -262,26 +290,23 @@ function MarketplaceListingContent() {
     setShowCustomerInfoDialog(false);
 
     try {
-      const response = await fetch(
-        `/api/v1/marketplace/${companySlug}/payments/create`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            provider: selectedPaymentProvider,
-            amount: calculatePrice(),
-            currency: listing?.currency || "USD",
-            listingId,
-            denomination: selectedDenomination,
-            quantity,
-            customerEmail,
-            customerFirstName,
-            customerLastName,
-          }),
-        }
-      );
+      const response = await fetch(`/api/v1/marketplace/${companySlug}/payments/create`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          provider: selectedPaymentProvider,
+          amount: calculatePrice(),
+          currency: listing?.currency || "USD",
+          listingId,
+          denomination: selectedDenomination,
+          quantity,
+          customerEmail,
+          customerFirstName,
+          customerLastName,
+        }),
+      });
 
       if (!response.ok) {
         const result = await response.json();
@@ -300,6 +325,27 @@ function MarketplaceListingContent() {
     } finally {
       setIsProcessingPayment(false);
     }
+  };
+
+  const getAverageRating = () => {
+    if (reviews.length === 0) return 0;
+    const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
+    return sum / reviews.length;
+  };
+
+  const renderStars = (rating: number, size: string = "h-4 w-4") => {
+    return (
+      <div className="flex gap-0.5">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`${size} ${
+              star <= rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+            }`}
+          />
+        ))}
+      </div>
+    );
   };
 
   if (isLoading) {
@@ -337,18 +383,41 @@ function MarketplaceListingContent() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b">
+    <>
+      <ListingSEO
+        listing={{
+          title: listing.title,
+          description: listing.description,
+          brand: listing.brand,
+          category: listing.category,
+          currency: listing.currency,
+          discountPercentage: listing.discountPercentage,
+          denominations: listing.denominations,
+        }}
+        companyName={company.displayName}
+        companySlug={companySlug}
+        listingId={listingId}
+        averageRating={getAverageRating()}
+        reviewCount={reviews.length}
+      />
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <div className="border-b">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
               {company.logo && (
-                <img src={company.logo} alt={company.displayName} className="h-8 w-8 sm:h-10 sm:w-10 rounded flex-shrink-0" />
+                <img
+                  src={company.logo}
+                  alt={company.displayName}
+                  className="h-8 w-8 sm:h-10 sm:w-10 rounded flex-shrink-0"
+                />
               )}
               <div className="min-w-0 flex-1">
-                <h2 className="font-semibold text-sm sm:text-base truncate">{company.displayName}</h2>
-                <p className="text-xs sm:text-sm text-muted-foreground">sellergift</p>
+                <h2 className="font-semibold text-sm sm:text-base truncate">
+                  {company.displayName}
+                </h2>
+                <p className="text-xs sm:text-sm text-muted-foreground">Seller Gift</p>
               </div>
             </div>
             <CartSheet />
@@ -380,7 +449,9 @@ function MarketplaceListingContent() {
                   <div className="min-w-0 flex-1">
                     <CardTitle className="text-lg mb-1 leading-none">{listing.title}</CardTitle>
                     <div className="flex items-center gap-1 flex-wrap">
-                      <Badge variant="outline" className="text-xs">{listing.brand}</Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {listing.brand}
+                      </Badge>
                       <Badge variant="outline" className="text-xs">
                         {listing.cardType === "digital" ? "Digital" : "Physical"}
                       </Badge>
@@ -399,7 +470,9 @@ function MarketplaceListingContent() {
                 {listing.description && (
                   <div>
                     <h3 className="text-sm font-semibold mb-0.5 leading-none">Description</h3>
-                    <p className="text-xs text-muted-foreground leading-tight">{listing.description}</p>
+                    <p className="text-xs text-muted-foreground leading-tight">
+                      {listing.description}
+                    </p>
                   </div>
                 )}
 
@@ -468,7 +541,9 @@ function MarketplaceListingContent() {
                           disabled={!inStock}
                         >
                           <div className="text-left">
-                            <div className="text-sm font-semibold whitespace-nowrap">{listing.currency} {denom}</div>
+                            <div className="text-sm font-semibold whitespace-nowrap">
+                              {listing.currency} {denom}
+                            </div>
                             {inStock ? (
                               <>
                                 {listing.discountPercentage > 0 && (
@@ -481,9 +556,7 @@ function MarketplaceListingContent() {
                                 </div>
                               </>
                             ) : (
-                              <div className="text-[10px] opacity-65">
-                                Out of Stock
-                              </div>
+                              <div className="text-[10px] opacity-65">Out of Stock</div>
                             )}
                           </div>
                         </Button>
@@ -494,11 +567,11 @@ function MarketplaceListingContent() {
 
                 {/* Quantity */}
                 <div>
-                  <label className="text-xs sm:text-sm font-medium mb-1.5 block">
-                    Quantity
-                  </label>
+                  <label className="text-xs sm:text-sm font-medium mb-1.5 block">Quantity</label>
                   {(() => {
-                    const availability = inventory.find((inv) => inv.denomination === selectedDenomination);
+                    const availability = inventory.find(
+                      (inv) => inv.denomination === selectedDenomination
+                    );
                     const maxQuantity = Math.min(availability?.available ?? 0, 100);
                     const inStock = availability?.inStock ?? false;
 
@@ -518,7 +591,11 @@ function MarketplaceListingContent() {
                           min="1"
                           max={maxQuantity}
                           value={quantity}
-                          onChange={(e) => setQuantity(Math.max(1, Math.min(maxQuantity, parseInt(e.target.value) || 1)))}
+                          onChange={(e) =>
+                            setQuantity(
+                              Math.max(1, Math.min(maxQuantity, parseInt(e.target.value) || 1))
+                            )
+                          }
                           className="w-16 sm:w-20 text-center border rounded-md py-1.5 sm:py-2 text-sm"
                           disabled={!inStock}
                         />
@@ -541,24 +618,33 @@ function MarketplaceListingContent() {
                   <div className="flex justify-between text-xs sm:text-sm">
                     <span className="text-muted-foreground">Card Value</span>
                     <span>
-                      {listing.currency} {selectedDenomination ? (selectedDenomination * quantity).toFixed(2) : "0.00"}
+                      {listing.currency}{" "}
+                      {selectedDenomination ? (selectedDenomination * quantity).toFixed(2) : "0.00"}
                     </span>
                   </div>
                   {listing.discountPercentage > 0 && (
                     <div className="flex justify-between text-xs sm:text-sm text-green-600 dark:text-green-400">
                       <span>Discount ({listing.discountPercentage}%)</span>
-                      <span>-{listing.currency} {calculateSavings().toFixed(2)}</span>
+                      <span>
+                        -{listing.currency} {calculateSavings().toFixed(2)}
+                      </span>
                     </div>
                   )}
                   {listing.sellerFeePercentage > 0 && (
                     <div className="flex justify-between text-xs sm:text-sm">
-                      <span className="text-muted-foreground">Service Fee ({listing.sellerFeePercentage}%)</span>
-                      <span>+{listing.currency} {calculateSellerFee().toFixed(2)}</span>
+                      <span className="text-muted-foreground">
+                        Service Fee ({listing.sellerFeePercentage}%)
+                      </span>
+                      <span>
+                        +{listing.currency} {calculateSellerFee().toFixed(2)}
+                      </span>
                     </div>
                   )}
                   <div className="border-t pt-2 flex justify-between text-base sm:text-lg font-bold">
                     <span>Total</span>
-                    <span>{listing.currency} {calculatePrice().toFixed(2)}</span>
+                    <span>
+                      {listing.currency} {calculatePrice().toFixed(2)}
+                    </span>
                   </div>
                 </div>
 
@@ -572,7 +658,9 @@ function MarketplaceListingContent() {
                       {paymentProviders.map((provider) => (
                         <Button
                           key={provider.id}
-                          variant={selectedPaymentProvider === provider.provider ? "secondary" : "outline"}
+                          variant={
+                            selectedPaymentProvider === provider.provider ? "secondary" : "outline"
+                          }
                           onClick={() => setSelectedPaymentProvider(provider.provider)}
                           className="h-auto py-2.5 px-4 justify-start text-sm"
                         >
@@ -586,7 +674,9 @@ function MarketplaceListingContent() {
 
                 {/* Purchase Buttons */}
                 {(() => {
-                  const availability = inventory.find((inv) => inv.denomination === selectedDenomination);
+                  const availability = inventory.find(
+                    (inv) => inv.denomination === selectedDenomination
+                  );
                   const inStock = availability?.inStock ?? false;
                   const canAddToCart = selectedDenomination && inStock;
                   const canPurchase = selectedDenomination && inStock && selectedPaymentProvider;
@@ -626,7 +716,8 @@ function MarketplaceListingContent() {
                         <div className="flex items-start gap-2 p-2 sm:p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                           <Info className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
                           <div className="text-xs sm:text-sm text-yellow-900 dark:text-yellow-300">
-                            This denomination is currently out of stock. Please select another denomination or check back later.
+                            This denomination is currently out of stock. Please select another
+                            denomination or check back later.
                           </div>
                         </div>
                       )}
@@ -661,6 +752,70 @@ function MarketplaceListingContent() {
               </CardContent>
             </Card>
           </div>
+        </div>
+
+        {/* Reviews Section */}
+        <div className="mt-8 sm:mt-12">
+          <Card>
+            <CardHeader className="p-4 sm:p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg sm:text-xl mb-1">Customer Reviews</CardTitle>
+                  {reviews.length > 0 && (
+                    <div className="flex items-center gap-2 mt-2">
+                      {renderStars(getAverageRating(), "h-5 w-5")}
+                      <span className="text-sm text-muted-foreground ml-1">
+                        {getAverageRating().toFixed(1)} out of 5 ({reviews.length}{" "}
+                        {reviews.length === 1 ? "review" : "reviews"})
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6 pt-0">
+              {reviewsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : reviews.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">
+                    No reviews yet. Be the first to review this gift card!
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {reviews.map((review) => (
+                    <div key={review.id} className="border-b last:border-0 pb-4 last:pb-0">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-semibold text-sm">
+                              {review.customerName || "Anonymous"}
+                            </p>
+                            {review.verified && (
+                              <Badge variant="secondary" className="text-xs">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Verified Purchase
+                              </Badge>
+                            )}
+                          </div>
+                          {renderStars(review.rating)}
+                        </div>
+                        <p className="text-xs text-muted-foreground whitespace-nowrap">
+                          {new Date(review.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      {review.comment && (
+                        <p className="text-sm text-muted-foreground mt-2">{review.comment}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
 
@@ -733,7 +888,9 @@ function MarketplaceListingContent() {
             <Button
               type="button"
               onClick={handleBuyNow}
-              disabled={!customerEmail || !customerFirstName || !customerLastName || isProcessingPayment}
+              disabled={
+                !customerEmail || !customerFirstName || !customerLastName || isProcessingPayment
+              }
             >
               {isProcessingPayment ? (
                 <>
@@ -747,7 +904,8 @@ function MarketplaceListingContent() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </>
   );
 }
 

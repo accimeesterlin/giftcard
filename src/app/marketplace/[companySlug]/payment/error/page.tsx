@@ -70,10 +70,16 @@ export default function PaymentErrorPage() {
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
           <div className="flex items-center gap-2 sm:gap-3">
             {company?.logo && (
-              <img src={company.logo} alt={company.displayName} className="h-8 w-8 sm:h-10 sm:w-10 rounded flex-shrink-0" />
+              <img
+                src={company.logo}
+                alt={company.displayName}
+                className="h-8 w-8 sm:h-10 sm:w-10 rounded flex-shrink-0"
+              />
             )}
             <div className="min-w-0">
-              <h2 className="text-sm sm:text-base font-semibold truncate">{company?.displayName || "sellergift"}</h2>
+              <h2 className="text-sm sm:text-base font-semibold truncate">
+                {company?.displayName || "Seller Gift"}
+              </h2>
               <p className="text-xs sm:text-sm text-muted-foreground">Payment Failed</p>
             </div>
           </div>
