@@ -126,7 +126,7 @@ export class EmailService {
 
         // Check for ZeptoMail environment variables as first fallback
         if (process.env.ZEPTOMAIL_API_KEY) {
-          console.log("📧 Using ZeptoMail from environment variables");
+          console.log("📧 Using ZeptoMail from environment variables (no integration configured)");
           const zeptoConfig = {
             apiKey: process.env.ZEPTOMAIL_API_KEY,
             fromEmail: process.env.ZEPTOMAIL_FROM_EMAIL || "noreply@example.com",
@@ -316,9 +316,9 @@ export class EmailService {
    * Checks for ZeptoMail environment variables first before using SMTP
    */
   static async send({ to, subject, html, text }: SendEmailOptions) {
-    // Try ZeptoMail from environment variables first
+    // Try ZeptoMail from environment variables first (fallback)
     if (process.env.ZEPTOMAIL_API_KEY) {
-      console.log("📧 Using ZeptoMail from environment variables");
+      console.log("📧 Using ZeptoMail from environment variables (fallback)");
       const zeptoConfig = {
         apiKey: process.env.ZEPTOMAIL_API_KEY,
         fromEmail: process.env.ZEPTOMAIL_FROM_EMAIL || "noreply@example.com",
@@ -331,8 +331,12 @@ export class EmailService {
     const transport = getTransporter();
 
     try {
+      const defaultFrom = process.env.ZEPTOMAIL_FROM_NAME
+        ? `"${process.env.ZEPTOMAIL_FROM_NAME}" <${process.env.ZEPTOMAIL_FROM_EMAIL || 'noreply@example.com'}>`
+        : '"Seller Gift" <noreply@example.com>';
+
       const info = await transport.sendMail({
-        from: process.env.SMTP_FROM || '"Seller Giftplace" <noreply@example.com>',
+        from: process.env.SMTP_FROM || defaultFrom,
         to,
         subject,
         html,
@@ -405,7 +409,7 @@ export class EmailService {
             </div>
 
             <div class="content">
-              <p><strong>${escapedInviterName}</strong> has invited you to join <strong>${escapedCompanyName}</strong> on Seller Giftplace.</p>
+              <p><strong>${escapedInviterName}</strong> has invited you to join <strong>${escapedCompanyName}</strong> on ${process.env.ZEPTOMAIL_FROM_NAME || 'Seller Gift'}.</p>
 
               <div class="info-box">
                 <p style="margin: 0;"><strong>Your role:</strong> <span class="role-badge">${escapedRole}</span></p>
@@ -426,7 +430,7 @@ export class EmailService {
             </div>
 
             <div class="footer">
-              <p>This is an automated email from Seller Giftplace.</p>
+              <p>This is an automated email from ${process.env.ZEPTOMAIL_FROM_NAME || 'Seller Gift'}.</p>
               <p>If you have any questions, please contact the person who invited you.</p>
             </div>
           </div>
@@ -489,7 +493,7 @@ export class EmailService {
             <p>You will no longer be able to access this company's data or perform any actions on their behalf.</p>
             <p>If you believe this was done in error, please contact the company administrator.</p>
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
-            <p style="color: #6b7280; font-size: 14px;">Seller Giftplace</p>
+            <p style="color: #6b7280; font-size: 14px;">${process.env.ZEPTOMAIL_FROM_NAME || 'Seller Gift'}</p>
           </div>
         </body>
       </html>
@@ -560,7 +564,7 @@ export class EmailService {
             </div>
 
             <div class="footer">
-              <p>This is an automated email from Seller Giftplace.</p>
+              <p>This is an automated email from ${process.env.ZEPTOMAIL_FROM_NAME || 'Seller Gift'}.</p>
             </div>
           </div>
         </body>
@@ -637,7 +641,7 @@ export class EmailService {
             </div>
 
             <div class="footer">
-              <p>This is an automated email from Seller Giftplace.</p>
+              <p>This is an automated email from ${process.env.ZEPTOMAIL_FROM_NAME || 'Seller Gift'}.</p>
             </div>
           </div>
         </body>
