@@ -1,6 +1,16 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { CompanyService } from "@/lib/services/company.service";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Building2, Package, ShoppingCart, Users } from "lucide-react";
 
 export default async function DashboardPage() {
   const session = await auth();
