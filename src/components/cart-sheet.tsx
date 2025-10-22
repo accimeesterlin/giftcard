@@ -63,8 +63,10 @@ export function CartSheet() {
     const basePrice = item.denomination * item.quantity;
     const discount = basePrice * (item.discountPercentage / 100);
     const priceAfterDiscount = basePrice - discount;
-    const sellerFee = priceAfterDiscount * (item.sellerFeePercentage / 100);
-    return priceAfterDiscount + sellerFee;
+    const sellerFeePercentage = priceAfterDiscount * (item.sellerFeePercentage / 100);
+    const sellerFeeFixed = (item.sellerFeeFixed || 0) * item.quantity;
+    const totalSellerFee = sellerFeePercentage + sellerFeeFixed;
+    return priceAfterDiscount + totalSellerFee;
   };
 
   const getAvailableQuantity = (listingId: string, denomination: number): number => {

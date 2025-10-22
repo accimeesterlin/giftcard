@@ -12,6 +12,7 @@ export interface CartItem {
   currency: string;
   discountPercentage: number;
   sellerFeePercentage: number;
+  sellerFeeFixed: number;
   imageUrl: string | null;
 }
 
@@ -104,8 +105,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const basePrice = item.denomination * item.quantity;
       const discount = basePrice * (item.discountPercentage / 100);
       const priceAfterDiscount = basePrice - discount;
-      const sellerFee = priceAfterDiscount * (item.sellerFeePercentage / 100);
-      return sum + priceAfterDiscount + sellerFee;
+      const sellerFeePercentage = priceAfterDiscount * (item.sellerFeePercentage / 100);
+      const sellerFeeFixed = (item.sellerFeeFixed || 0) * item.quantity;
+      const totalSellerFee = sellerFeePercentage + sellerFeeFixed;
+      return sum + priceAfterDiscount + totalSellerFee;
     }, 0);
   };
 

@@ -46,6 +46,7 @@ interface Listing {
   denominations: number[];
   discountPercentage: number;
   sellerFeePercentage: number;
+  sellerFeeFixed: number;
   currency: string;
   countries: string[];
   imageUrl: string | null;
@@ -228,8 +229,10 @@ function MarketplaceListingContent() {
     const basePrice = selectedDenomination * quantity;
     const discount = basePrice * (listing.discountPercentage / 100);
     const priceAfterDiscount = basePrice - discount;
-    const sellerFee = priceAfterDiscount * (listing.sellerFeePercentage / 100);
-    return priceAfterDiscount + sellerFee;
+    const sellerFeePercentage = priceAfterDiscount * (listing.sellerFeePercentage / 100);
+    const sellerFeeFixed = (listing.sellerFeeFixed || 0) * quantity;
+    const totalSellerFee = sellerFeePercentage + sellerFeeFixed;
+    return priceAfterDiscount + totalSellerFee;
   };
 
   const calculateSavings = () => {
@@ -244,7 +247,9 @@ function MarketplaceListingContent() {
     const basePrice = selectedDenomination * quantity;
     const discount = basePrice * (listing.discountPercentage / 100);
     const priceAfterDiscount = basePrice - discount;
-    return priceAfterDiscount * (listing.sellerFeePercentage / 100);
+    const sellerFeePercentage = priceAfterDiscount * (listing.sellerFeePercentage / 100);
+    const sellerFeeFixed = (listing.sellerFeeFixed || 0) * quantity;
+    return sellerFeePercentage + sellerFeeFixed;
   };
 
   const handleAddToCart = () => {
@@ -266,6 +271,7 @@ function MarketplaceListingContent() {
       currency: listing.currency,
       discountPercentage: listing.discountPercentage,
       sellerFeePercentage: listing.sellerFeePercentage,
+      sellerFeeFixed: listing.sellerFeeFixed,
       imageUrl: listing.imageUrl,
     });
 
@@ -630,10 +636,15 @@ function MarketplaceListingContent() {
                       </span>
                     </div>
                   )}
-                  {listing.sellerFeePercentage > 0 && (
+                  {(listing.sellerFeePercentage > 0 || listing.sellerFeeFixed > 0) && (
                     <div className="flex justify-between text-xs sm:text-sm">
                       <span className="text-muted-foreground">
-                        Service Fee ({listing.sellerFeePercentage}%)
+                        Service Fee
+                        {listing.sellerFeePercentage > 0 && listing.sellerFeeFixed > 0
+                          ? ` (${listing.sellerFeePercentage}% + ${listing.currency} ${listing.sellerFeeFixed.toFixed(2)})`
+                          : listing.sellerFeePercentage > 0
+                          ? ` (${listing.sellerFeePercentage}%)`
+                          : ` (${listing.currency} ${listing.sellerFeeFixed.toFixed(2)})`}
                       </span>
                       <span>
                         +{listing.currency} {calculateSellerFee().toFixed(2)}
