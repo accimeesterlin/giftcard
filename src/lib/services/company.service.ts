@@ -76,7 +76,7 @@ export class CompanyService {
       invitedBy: null,
       invitedAt: null,
       acceptedAt: new Date(),
-      invitationToken: null,
+      // invitationToken is omitted - field should be undefined for sparse index
       invitationExpiresAt: null,
       lastAccessedAt: new Date(),
     });

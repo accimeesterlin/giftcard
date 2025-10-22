@@ -59,10 +59,8 @@ const CompanyMembershipSchema = new Schema<CompanyMembershipDocument>(
     },
     invitationToken: {
       type: String,
-      default: null,
-      unique: true,
-      sparse: true,
-      index: true,
+      // No default - field will be undefined/missing when not set
+      // This is required for the sparse unique index to work correctly
     },
     invitationExpiresAt: {
       type: Date,
@@ -96,8 +94,11 @@ const CompanyMembershipSchema = new Schema<CompanyMembershipDocument>(
 CompanyMembershipSchema.index({ userId: 1, companyId: 1 }, { unique: true });
 CompanyMembershipSchema.index({ companyId: 1, role: 1 });
 CompanyMembershipSchema.index({ companyId: 1, status: 1 });
-// invitationToken index is already defined in the schema with unique: true, sparse: true
 CompanyMembershipSchema.index({ status: 1, invitationExpiresAt: 1 });
+
+// Sparse unique index for invitationToken (allows multiple missing/undefined values)
+// Note: This requires invitationToken field to be undefined (not null) when not in use
+CompanyMembershipSchema.index({ invitationToken: 1 }, { unique: true, sparse: true, name: "invitationToken_1_sparse" });
 
 // Virtual populate user
 CompanyMembershipSchema.virtual("user", {
