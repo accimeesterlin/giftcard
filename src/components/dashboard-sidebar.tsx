@@ -21,7 +21,14 @@ import {
   ChevronDown,
   ChevronRight,
   Plug,
+  Menu,
 } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 
 interface NavItem {
   title: string;
@@ -41,6 +48,7 @@ export function DashboardSidebar() {
   const pathname = usePathname();
   const companySlug = params.companySlug as string;
   const [isDeveloperOpen, setIsDeveloperOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const mainNavigation: NavItem[] = [
     {
@@ -125,7 +133,7 @@ export function DashboardSidebar() {
     (item) => pathname === item.href || pathname?.startsWith(item.href + "/")
   );
 
-  const renderNavItem = (item: NavItem, isNested = false) => {
+  const renderNavItem = (item: NavItem, isNested = false, isMobile = false) => {
     const Icon = item.icon;
 
     // Special handling for Overview - only active on exact match
@@ -138,6 +146,7 @@ export function DashboardSidebar() {
       <Link
         key={item.href}
         href={item.href}
+        onClick={() => isMobile && setMobileMenuOpen(false)}
         className={cn(
           "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
           "hover:bg-accent hover:text-accent-foreground",
@@ -158,45 +167,71 @@ export function DashboardSidebar() {
     );
   };
 
-  return (
-    <aside className="hidden lg:block w-64 border-r bg-muted/40 min-h-[calc(100vh-3.5rem)] sticky top-14">
-      <nav className="flex flex-col gap-1 p-4 h-[calc(100vh-3.5rem)] overflow-y-auto">
-        {/* Main Navigation */}
-        {mainNavigation.map((item) => renderNavItem(item))}
+  // Reusable sidebar content
+  const SidebarContent = ({ isMobile = false }: { isMobile?: boolean }) => (
+    <nav className="flex flex-col gap-1 p-4 h-full overflow-y-auto">
+      {/* Main Navigation */}
+      {mainNavigation.map((item) => renderNavItem(item, false, isMobile))}
 
-        {/* Developer Section */}
-        <div className="mt-2">
-          <button
-            onClick={() => setIsDeveloperOpen(!isDeveloperOpen)}
-            className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors w-full",
-              "hover:bg-accent hover:text-accent-foreground",
-              isDeveloperSectionActive
-                ? "text-accent-foreground font-medium"
-                : "text-muted-foreground"
-            )}
-          >
-            <Code className="h-4 w-4" />
-            <span>Developer</span>
-            {isDeveloperOpen ? (
-              <ChevronDown className="h-4 w-4 ml-auto" />
-            ) : (
-              <ChevronRight className="h-4 w-4 ml-auto" />
-            )}
-          </button>
-
-          {isDeveloperOpen && (
-            <div className="mt-1 space-y-1">
-              {developerSection.items.map((item) => renderNavItem(item, true))}
-            </div>
+      {/* Developer Section */}
+      <div className="mt-2">
+        <button
+          onClick={() => setIsDeveloperOpen(!isDeveloperOpen)}
+          className={cn(
+            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors w-full",
+            "hover:bg-accent hover:text-accent-foreground",
+            isDeveloperSectionActive
+              ? "text-accent-foreground font-medium"
+              : "text-muted-foreground"
           )}
-        </div>
+        >
+          <Code className="h-4 w-4" />
+          <span>Developer</span>
+          {isDeveloperOpen ? (
+            <ChevronDown className="h-4 w-4 ml-auto" />
+          ) : (
+            <ChevronRight className="h-4 w-4 ml-auto" />
+          )}
+        </button>
 
-        {/* Bottom Navigation */}
-        <div className="mt-2">
-          {bottomNavigation.map((item) => renderNavItem(item))}
+        {isDeveloperOpen && (
+          <div className="mt-1 space-y-1">
+            {developerSection.items.map((item) => renderNavItem(item, true, isMobile))}
+          </div>
+        )}
+      </div>
+
+      {/* Bottom Navigation */}
+      <div className="mt-2">
+        {bottomNavigation.map((item) => renderNavItem(item, false, isMobile))}
+      </div>
+    </nav>
+  );
+
+  return (
+    <>
+      {/* Mobile Menu Button */}
+      <div className="lg:hidden fixed top-16 left-4 z-40">
+        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+          <SheetTrigger asChild>
+            <Button variant="outline" size="icon" className="bg-background">
+              <Menu className="h-5 w-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-64 p-0">
+            <div className="h-full bg-muted/40">
+              <SidebarContent isMobile />
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
+
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:block w-64 border-r bg-muted/40 min-h-[calc(100vh-3.5rem)] sticky top-14">
+        <div className="h-[calc(100vh-3.5rem)]">
+          <SidebarContent />
         </div>
-      </nav>
-    </aside>
+      </aside>
+    </>
   );
 }
